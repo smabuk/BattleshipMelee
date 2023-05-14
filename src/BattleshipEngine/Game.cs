@@ -9,12 +9,12 @@ public record Game(GameType GameType = GameType.Classic)
 	public void Init()
 	{
 		foreach (Player player in players.Values) {
-			boards[player.Id].Init();
 			shots[player.Id] = new();
 		}
 	}
 
 	public bool AreFleetsReady => boards.Values.All(board => board.IsFleetReady);
+	public int BoardSize => GetBoardSize(GameType);
 	public bool GameOver => boards.Values.Any(board => board.IsFleetSunk);
 	public List<Ship> Fleet(Player player) => boards[player.Id].Fleet.ToList();
 	public string OpponentName(Player player) => Opponent(player).Name;
@@ -25,9 +25,8 @@ public record Game(GameType GameType = GameType.Classic)
 		Player player = new(name.Trim(), isComputer);
 
 		players.Add(player.Id, player);
-		boards.Add(player.Id, new(GameType));
+		boards.Add(player.Id, new(BoardSize) { Fleet = GameShips(GameType) });
 
-		boards[player.Id].Init();
 		shots[player.Id] = new();
 
 		if (isComputer) {
@@ -133,4 +132,40 @@ public record Game(GameType GameType = GameType.Classic)
 		return board.IsFleetReady;
 	}
 	public bool PlaceShip(Player player, Ship shipToPlace) => boards[player.Id].PlaceShip(shipToPlace);
+
+	public static int GetBoardSize(GameType gameType) => gameType switch
+	{
+		GameType.Classic => 10,
+		GameType.Melee => throw new NotImplementedException(),
+		GameType.BigBangTheory => throw new NotImplementedException(),
+		_ => throw new NotImplementedException(),
+	};
+
+	public static List<Ship> GameShips(GameType gameType)
+	{
+		List<Ship> fleet = gameType switch
+		{
+			GameType.Classic => new ()
+			{
+				new (ShipType.Destroyer),
+				new (ShipType.Submarine),
+				new (ShipType.Cruiser),
+				new (ShipType.Battleship),
+				new (ShipType.Carrier),
+			},
+			GameType.BigBangTheory => new ()
+			{
+				new (ShipType.Destroyer),
+				new (ShipType.Submarine),
+				new (ShipType.Cruiser),
+				new (ShipType.RomulanBattleBagel),
+				new (ShipType.Carrier),
+			},
+			GameType.Melee => throw new NotImplementedException(),
+			_ => throw new NotImplementedException(),
+		};
+
+		return fleet;
+	}
+
 }

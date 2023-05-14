@@ -1,13 +1,13 @@
-﻿namespace BattleshipEngine.Tests;
+﻿using Xunit.Sdk;
+
+namespace BattleshipEngine.Tests;
 
 public class BoardTests
 {
 	[Fact]
 	public void CreateAClassicBoard()
 	{
-		Board board = new Board(GameType.Classic);
-
-		board.Init();
+		Board board = new Board(10) { Fleet = Game.GameShips(GameType.Classic) };
 
 		List<Ship> ships = board.Fleet.Where(s => s.IsPositioned == false).ToList();
 		Assert.Equal(5, ships.Count);
@@ -16,9 +16,7 @@ public class BoardTests
 	[Fact]
 	public void PlaceShipsOnBoard()
 	{
-		Board board = new Board(GameType.Classic);
-
-		board.Init();
+		Board board = new Board(10) { Fleet = Game.GameShips(GameType.Classic) };
 
 		bool success = board.PlaceShip(new(ShipType.Cruiser, "A1", Orientation.Horizontal));
 		Assert.True(success);
@@ -58,9 +56,7 @@ public class BoardTests
 	[Fact]
 	public void AttackBoard()
 	{
-		Board board = new Board(GameType.Classic);
-
-		board.Init();
+		Board board = new Board(10) { Fleet = Game.GameShips(GameType.Classic) };
 
 		_ = board.PlaceShip(new(ShipType.Cruiser, "A1", Orientation.Horizontal));
 		_ = board.PlaceShip(new(ShipType.Battleship, "B1", Orientation.Horizontal));
