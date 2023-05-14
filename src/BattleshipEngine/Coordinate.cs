@@ -28,7 +28,7 @@ public record struct Coordinate(int Row, int Col) : IParsable<Coordinate>
 	//[GeneratedRegex("""(?<rowLetter>[a-zA-Z])(?<columnNumber>\d+)""")]
 	//private static partial Regex CoordinateRegex();
 
-	public static Coordinate Parse(string coordinate)
+	public static Coordinate Parse(string? coordinate)
 	{
 		const string OUT_OF_RANGE_MESSAGE = $"{nameof(coordinate)} must start with a single letter and be followed by a number over 0 like D9.";
 
@@ -54,19 +54,31 @@ public record struct Coordinate(int Row, int Col) : IParsable<Coordinate>
 
 	public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out Coordinate result)
 	{
+		//Coordinate coordinate = new();
+		//try {
+		//	coordinate = Parse(s);
+		//}
+		//catch (Exception) {
+		//	result = coordinate;
+		//	return false;
+		//}
+
+		//result = coordinate;
+		//return true;
+
 		if (s is null) {
-			result = null!;
+			result = new();
 			return false;
 		}
 
 		if (s.Length < 2) {
-			result = null!;
+			result = new();
 			return false;
 		}
 
 		char rowLetter = s.ToUpperInvariant()[0];
 		if (rowLetter is < 'A' or > 'Z') {
-			result = null!;
+			result = new();
 			return false;
 		}
 
@@ -76,7 +88,7 @@ public record struct Coordinate(int Row, int Col) : IParsable<Coordinate>
 			result = new Coordinate(row, col);
 			return true;
 		} else {
-			result = null!;
+			result = new();
 			return false;
 		}
 	}

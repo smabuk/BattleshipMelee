@@ -2,8 +2,11 @@
 
 using BattleshipEngine;
 
+
 Game game = new Game();
 Dictionary<Coordinate, AttackResult> shots = new();
+
+GameStatus gameStatus = GameStatus.AddPlayers;
 
 Player human = game.AddPlayer("Human");
 _ = game.AddPlayer("Computer", isComputer: true);
@@ -16,6 +19,8 @@ Console.SetCursorPosition(4, inputRow);
 string name = AnsiConsole.Ask<string>("What is your [green]name[/]?", "Human");
 human = human with { Name = name };
 
+gameStatus = GameStatus.PlacingShips;
+
 DisplayGame(human);
 
 List<Ship> fleet = game.Fleet(human).Where(ship => ship.IsPositioned == false).ToList();
@@ -24,16 +29,22 @@ foreach (Ship ship in fleet) {
 	Ship newShip;
 	do {
 		DisplayGame(human);
-		Console.SetCursorPosition(4, inputRow);
+		Console.SetCursorPosition(0, inputRow);
 		Orientation orientation = AnsiConsole.Prompt(
 			new SelectionPrompt<Orientation>()
 			.Title($"Orientation for your {ship.Type}?")
 			.PageSize(4)
 			.AddChoices(new[] { Orientation.Horizontal, Orientation.Vertical })
 			);
-		//DisplayGame(human);
-		Console.SetCursorPosition(4, inputRow);
-		Coordinate coordinate = AnsiConsole.Ask<string>($"Position for your {ship.Type}?", ship.Position);
+		DisplayGame(human);
+		Coordinate coordinate;
+		bool isValid = false;
+		do {
+			Console.SetCursorPosition(0, inputRow);
+			string coord = AnsiConsole.Ask<string>($"Position for your {ship.Type}?", ship.Position);
+			isValid = !Coordinate.TryParse(coord, null, out coordinate);
+		} while (isValid);
+
 		newShip = new(ship.Type, coordinate, orientation);
 
 	} while (!game.PlaceShip(human, newShip));
@@ -135,6 +146,25 @@ void DisplayGame(Player player)
 			.Expand()
 		);
 
+	if (gameStatus == GameStatus.PlacingShips) {
+
+		layout["Status"].Update(
+			new Panel(
+				Align.Center(new Text(""), VerticalAlignment.Middle))
+				.Header("Ship placement")
+				.Expand()
+			);
+
+	}
+
 	AnsiConsole.Clear();
 	AnsiConsole.Write(layout);
+}
+
+enum GameStatus
+{
+	AddPlayers,
+	PlacingShips,
+	Attacking,
+	GameOver,
 }
