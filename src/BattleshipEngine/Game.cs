@@ -4,7 +4,7 @@ public record Game(GameType GameType = GameType.Classic)
 {
 	private readonly Dictionary<PlayerId, Player> players = new();
 	private readonly Dictionary<PlayerId, Board> boards = new();
-	private readonly Dictionary<PlayerId, List<Coordinate>> shots = new();
+	private readonly Dictionary<PlayerId, List<AttackResult>> shots = new();
 
 	public void Init()
 	{
@@ -22,7 +22,7 @@ public record Game(GameType GameType = GameType.Classic)
 
 	public Player AddPlayer(string name, bool isComputer = false)
 	{
-		Player player = new(name, isComputer);
+		Player player = new(name.Trim(), isComputer);
 
 		players.Add(player.Id, player);
 		boards.Add(player.Id, new(GameType));
@@ -41,11 +41,11 @@ public record Game(GameType GameType = GameType.Classic)
 	{
 		Player playerToAttack = Opponent(player);
 
-		if (shots[player.Id].Contains(attackCoordinate)) {
+		if (shots[player.Id].Any(s => s.AttackCoordinate == attackCoordinate)) {
 			return new(attackCoordinate, AttackResultType.AlreadyAttacked);
 		} else {
-			shots[player.Id].Add(attackCoordinate);
 			AttackResult result = boards[playerToAttack.Id].Attack(attackCoordinate);
+			shots[player.Id].Add(result);
 			return result;
 		}
 	}
@@ -55,31 +55,47 @@ public record Game(GameType GameType = GameType.Classic)
 		Player playerToAttack = Opponent(player);
 
 		foreach (Coordinate attackCoordinate in attackCoordinates) {
-			if (shots[player.Id].Contains(attackCoordinate)) {
+			if (shots[player.Id].Any(s => s.AttackCoordinate == attackCoordinate)) {
 				yield return new(attackCoordinate, AttackResultType.AlreadyAttacked);
 			} else {
-				shots[player.Id].Add(attackCoordinate);
-				yield return boards[playerToAttack.Id].Attack(attackCoordinate);
+				AttackResult result = boards[playerToAttack.Id].Attack(attackCoordinate);
+				shots[player.Id].Add(result);
+				yield return result;
 			}
 		}
 	}
 
-	public List<PlayerFinishingPosition> LeaderBoard(Player player)
+	public IEnumerable<PlayerFinishingPosition> LeaderBoard(Player focusedPlayer)
 	{
-		if (GameOver) {
-			return new()
-			{
-				new(boards[Opponent(player).Id].IsFleetSunk ? 1 : 2, player.Name),
-				new(boards[player.Id].IsFleetSunk ? 1 : 2, Opponent(player).Name)
-			};
-		} else {
-			// ToDo calculate scores based on ships sunk and hits
-			return new()
-			{
-				new(1, player.Name),
-				new(1, Opponent(player).Name)
-			};
+		List<PlayerFinishingPosition> playerFinishingPositions = new();
 
+		foreach (Player player in players.Values) {
+			int score = 0;
+			foreach (AttackResult shot in shots[player.Id]) {
+				score += shot.HitOrMiss switch
+				{
+					AttackResultType.Hit => 2,
+					AttackResultType.Miss => 0,
+					AttackResultType.HitAndSunk => 5,
+					AttackResultType.AlreadyAttacked => -1,
+					AttackResultType.InvalidPosition => -1,
+					_ => 0,
+				};
+			}
+			score += boards[player.Id].IsFleetSunk ? -100 : 0;
+			score += boards[Opponent(player).Id].IsFleetSunk ? 100 : 0;
+			PlayerFinishingPosition playerFinishingPosition = new(player.Name, Score: score);
+			playerFinishingPositions.Add(playerFinishingPosition);
+		}
+
+		int position = 0;
+		int previousScore = int.MaxValue;
+		foreach (PlayerFinishingPosition playerFinishingPosition in playerFinishingPositions.OrderByDescending(p => p.Score)) {
+			if (playerFinishingPosition.Score < previousScore) {
+				previousScore = playerFinishingPosition.Score;
+				position++;
+			}
+			yield return playerFinishingPosition with { Position = position };
 		}
 	}
 

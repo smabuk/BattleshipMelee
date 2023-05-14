@@ -1,3 +1,3 @@
 ﻿namespace BattleshipEngine;
 
-public record PlayerFinishingPosition(int Position, string Name);
+public record PlayerFinishingPosition(string Name, int Position = 0, int Score = 0);

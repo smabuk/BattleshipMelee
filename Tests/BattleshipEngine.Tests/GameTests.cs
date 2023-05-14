@@ -51,7 +51,7 @@ public class GameTests
 
 		Assert.True(game.GameOver);
 
-		List<PlayerFinishingPosition> playerFinishingPositions = game.LeaderBoard(player1);
+		List<PlayerFinishingPosition> playerFinishingPositions = game.LeaderBoard(player1).ToList();
 		Assert.Equal(1, playerFinishingPositions.Single(s => s.Name == player2.Name).Position);
 		Assert.Equal(2, playerFinishingPositions.Single(s => s.Name == player1.Name).Position);
 	}
