@@ -2,9 +2,9 @@
 
 public record Game(GameType GameType = GameType.Classic)
 {
-	private readonly Dictionary<Guid, Player> players = new();
-	private readonly Dictionary<Guid, Board> boards = new();
-	private readonly Dictionary<Guid, List<Coordinate>> shots = new();
+	private readonly Dictionary<PlayerId, Player> players = new();
+	private readonly Dictionary<PlayerId, Board> boards = new();
+	private readonly Dictionary<PlayerId, List<Coordinate>> shots = new();
 
 	public void Init()
 	{
@@ -43,10 +43,25 @@ public record Game(GameType GameType = GameType.Classic)
 
 		if (shots[player.Id].Contains(attackCoordinate)) {
 			return new(attackCoordinate, AttackResultType.AlreadyAttacked);
+		} else {
+			shots[player.Id].Add(attackCoordinate);
+			AttackResult result = boards[playerToAttack.Id].Attack(attackCoordinate);
+			return result;
 		}
-		shots[player.Id].Add(attackCoordinate);
-		AttackResult result = boards[playerToAttack.Id].Attack(attackCoordinate);
-		return result;
+	}
+
+	public IEnumerable<AttackResult> FireSalvo(Player player, IEnumerable<Coordinate> attackCoordinates)
+	{
+		Player playerToAttack = Opponent(player);
+
+		foreach (Coordinate attackCoordinate in attackCoordinates) {
+			if (shots[player.Id].Contains(attackCoordinate)) {
+				yield return new(attackCoordinate, AttackResultType.AlreadyAttacked);
+			} else {
+				shots[player.Id].Add(attackCoordinate);
+				yield return boards[playerToAttack.Id].Attack(attackCoordinate);
+			}
+		}
 	}
 
 	public List<PlayerFinishingPosition> LeaderBoard(Player player)
