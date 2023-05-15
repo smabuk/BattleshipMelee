@@ -8,15 +8,17 @@ internal class BattleshipGame
 	private long _timerStart;
 	private int _bottomRow;
 	private int _topRow = int.MinValue;
+	private Dictionary<Coordinate, AttackResult> shots = new();
+	private Dictionary<ShipType, Ship> myFleet = new();
 
 	internal void Play()
 	{
 		Game game = new Game();
-		Dictionary<Coordinate, AttackResult> shots = new();
 
 		GameStatus gameStatus = GameStatus.AddPlayers;
 
-		Player human = game.AddPlayer("Human");
+		string name = AnsiConsole.Ask<string>("What is your [green]name[/]?", "Human").Trim();
+		Player human = game.AddPlayer(name);
 		_ = game.AddPlayer("Computer", isComputer: true);
 
 		DisplayGame(human);
@@ -24,11 +26,8 @@ internal class BattleshipGame
 		(_, _bottomRow) = Console.GetCursorPosition();
 		int inputRow = _bottomRow + 5;
 
-		Console.SetCursorPosition(4, inputRow);
-		string name = AnsiConsole.Ask<string>("What is your [green]name[/]?", "Human");
-		human = human with { Name = name };
-
 		gameStatus = GameStatus.PlacingShips;
+		myFleet = game.Fleet(human).ToDictionary(ship => ship.Type);
 
 		DisplayGame(human);
 
@@ -57,7 +56,7 @@ internal class BattleshipGame
 				newShip = new(ship.Type, coordinate, orientation);
 
 			} while (!game.PlaceShip(human, newShip));
-
+			myFleet[newShip.Type] = newShip;
 		}
 
 
@@ -93,28 +92,28 @@ internal class BattleshipGame
 			int boardSize = game.BoardSize;
 			Console.WriteLine();
 			Console.SetCursorPosition(consoleCol, consoleRow + 1);
-			Console.WriteLine("     1 2 3 4 5 6 7 8 9 10"); // Display the column labels
+			Console.WriteLine("     1 2 3 4 5 6 7 8 9 10");
 			Console.SetCursorPosition(consoleCol, consoleRow + 2);
-			Console.WriteLine("    ---------------------");
+			Console.WriteLine("   ┌─────────────────────┐");
 			for (int row = 0; row < boardSize; row++) {
 				Console.SetCursorPosition(consoleCol, consoleRow + 3 + row);
-				Console.Write($"{Convert.ToChar(row + 'A'),2} |"); // Display the row label
+				Console.Write($"{Convert.ToChar(row + 'A'),2} │");
 				for (int col = 0; col < boardSize; col++) {
 					string symbol = EMPTY;
-					Console.Write($" {symbol}"); // Display the symbol
+					Console.Write($" {symbol}");
 				}
 				Console.WriteLine(" |");
 			}
 			Console.SetCursorPosition(consoleCol, consoleRow + 13);
-			Console.WriteLine("    ---------------------");
+			Console.WriteLine("   └─────────────────────┘");
 
-			// Place ships on boar
+			// Place ships on the board
 
-			List<Ship> ships = new();
-			if (player is not null) {
-				ships = game.Fleet(player ?? new());
-			}
-			foreach (Ship ship in ships) {
+			//List<Ship> ships = new();
+			//if (player is not null) {
+			//	ships = game.Fleet(player ?? new());
+			//}
+			foreach (Ship ship in myFleet.Values) {
 				foreach (ShipSegment segment in ship.Segments.Values) {
 					Console.SetCursorPosition(consoleCol + 3 + (segment.Coordinate.Col * 2), consoleRow + 2 + segment.Coordinate.Row);
 					string hitormiss = segment.IsHit ? HIT : SHIP;
