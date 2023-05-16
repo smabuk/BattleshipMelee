@@ -1,8 +1,15 @@
-﻿using BattleshipEngine;
+﻿using System;
+
+using BattleshipEngine;
 
 namespace BSMConsole;
 internal class BattleshipGame
 {
+	public string PlayerName { get; set; } = "Me";
+	public bool RandomShipPlacement { get; set; } = false;
+	public bool Verbose{ get; set; } = false;
+	public GameType GameType{ get; set; } = GameType.Classic;
+
 	private const int OneSecond = 1000;
 
 	private long _timerStart;
@@ -18,8 +25,8 @@ internal class BattleshipGame
 
 		GameStatus gameStatus = GameStatus.AddPlayers;
 
-		string name = AnsiConsole.Ask<string>("What is your [green]name[/]?", "Human").Trim();
-		PrivatePlayer human = game.AddPlayer(name);
+		//string name = AnsiConsole.Ask<string>("What is your [green]name[/]?", "Human").Trim();
+		PrivatePlayer human = game.AddPlayer(PlayerName);
 		_ = game.AddPlayer("Computer", isComputer: true);
 
 		DisplayGame(human);
@@ -28,9 +35,21 @@ internal class BattleshipGame
 		int inputRow = _bottomRow + 5;
 
 		gameStatus = GameStatus.PlacingShips;
-		quit = PlaceShips();
+		if (RandomShipPlacement) {
+			game.PlaceShips(human, doItForMe: true);
+			myFleet = game.Fleet(human).ToDictionary(ship => ship.Type, ship => ship);
+		} else {
+			quit = PlaceShips();
+		}
 
 		DisplayGame(human);
+
+		Console.SetCursorPosition(0, inputRow + 1);
+
+
+
+
+
 
 		void DisplayGame(Player player)
 		{
@@ -43,16 +62,27 @@ internal class BattleshipGame
 				_topRow -= 20;
 			}
 
+			Console.SetCursorPosition(0, _topRow);
+			Console.Write($"┌{new string('─', Console.WindowWidth - 4 - 0)}┐");
+			Console.WriteLine();
+			for (int row = 0; row < 20; row++) {
+				Console.Write($"|{new string(' ', Console.WindowWidth - 4 - 0)}|");
+				Console.WriteLine();
+			}
+			Console.Write($"└{new string('─', Console.WindowWidth - 4 - 0)}┘");
+			Console.WriteLine();
+
+
 			DisplayBoard(player);
 
 		}
 
-		void DisplayBoard(Player? player = null, int consoleCol = 16, int consoleRow = 0)
+		void DisplayBoard(Player? player = null, int consoleCol = 4, int consoleRow = 4)
 		{
-			const string EMPTY = ".";
-			const string SHIP = "S";
-			const string HIT = "X";
-			const string MISS = "O";
+			const string EMPTY = "[blue].[/]";
+			const string SHIP  = "S";
+			const string HIT   = "[red]X[/]";
+			const string MISS  = "O";
 
 			Console.SetCursorPosition(consoleCol, consoleRow);
 
@@ -67,7 +97,7 @@ internal class BattleshipGame
 				Console.Write($"{Convert.ToChar(row + 'A'),2} │");
 				for (int col = 0; col < boardSize; col++) {
 					string symbol = EMPTY;
-					Console.Write($" {symbol}");
+					AnsiConsole.Markup($" {symbol}");
 				}
 				Console.WriteLine(" |");
 			}
@@ -84,7 +114,7 @@ internal class BattleshipGame
 				foreach (ShipSegment segment in ship.Segments.Values) {
 					Console.SetCursorPosition(consoleCol + 3 + (segment.Coordinate.Col * 2), consoleRow + 2 + segment.Coordinate.Row);
 					string hitormiss = segment.IsHit ? HIT : SHIP;
-					Console.Write(hitormiss);
+					AnsiConsole.Markup(hitormiss);
 				}
 			}
 		}

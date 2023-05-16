@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "BSMConsole": {
+      "commandName": "Project",
+      "commandLineArgs": "battleship --play --random"
+    }
+  }
+}
