@@ -13,12 +13,13 @@ internal class BattleshipGame
 
 	internal void Play()
 	{
+		bool quit = false;
 		Game game = new Game();
 
 		GameStatus gameStatus = GameStatus.AddPlayers;
 
 		string name = AnsiConsole.Ask<string>("What is your [green]name[/]?", "Human").Trim();
-		Player human = game.AddPlayer(name);
+		PrivatePlayer human = game.AddPlayer(name);
 		_ = game.AddPlayer("Computer", isComputer: true);
 
 		DisplayGame(human);
@@ -27,43 +28,9 @@ internal class BattleshipGame
 		int inputRow = _bottomRow + 5;
 
 		gameStatus = GameStatus.PlacingShips;
-		myFleet = game.Fleet(human).ToDictionary(ship => ship.Type);
+		quit = PlaceShips();
 
 		DisplayGame(human);
-
-		List<Ship> fleet = game.Fleet(human).Where(ship => ship.IsPositioned == false).ToList();
-
-		foreach (Ship ship in fleet) {
-			Ship newShip;
-			do {
-				DisplayGame(human);
-				Console.SetCursorPosition(0, inputRow);
-				Orientation orientation = AnsiConsole.Prompt(
-					new SelectionPrompt<Orientation>()
-					.Title($"Orientation for your {ship.Type}?")
-					.PageSize(4)
-					.AddChoices(new[] { Orientation.Horizontal, Orientation.Vertical })
-					);
-				DisplayGame(human);
-				Coordinate coordinate;
-				bool isValid = false;
-				do {
-					Console.SetCursorPosition(0, inputRow);
-					string coord = AnsiConsole.Ask<string>($"Position for your {ship.Type}?", ship.Position);
-					isValid = !Coordinate.TryParse(coord, null, out coordinate);
-				} while (isValid);
-
-				newShip = new(ship.Type, coordinate, orientation);
-
-			} while (!game.PlaceShip(human, newShip));
-			myFleet[newShip.Type] = newShip;
-		}
-
-
-		DisplayGame(human);
-
-		Console.SetCursorPosition(0, inputRow);
-		bool quit = AnsiConsole.Confirm("Quit?");
 
 		void DisplayGame(Player player)
 		{
@@ -83,9 +50,9 @@ internal class BattleshipGame
 		void DisplayBoard(Player? player = null, int consoleCol = 16, int consoleRow = 0)
 		{
 			const string EMPTY = ".";
-			const string SHIP  = "S";
-			const string HIT   = "X";
-			const string MISS  = "O";
+			const string SHIP = "S";
+			const string HIT = "X";
+			const string MISS = "O";
 
 			Console.SetCursorPosition(consoleCol, consoleRow);
 
@@ -228,6 +195,50 @@ internal class BattleshipGame
 			AnsiConsole.Clear();
 			AnsiConsole.Write(layout);
 		}
+
+		bool PlaceShips()
+		{
+			myFleet = game.Fleet(human).ToDictionary(ship => ship.Type);
+
+			DisplayGame(human);
+
+			List<Ship> fleet = game.Fleet(human).Where(ship => ship.IsPositioned == false).ToList();
+
+			foreach (Ship ship in fleet) {
+				Ship newShip;
+				do {
+					DisplayGame(human);
+					Console.SetCursorPosition(0, inputRow);
+					Orientation orientation = AnsiConsole.Prompt(
+						new SelectionPrompt<Orientation>()
+						.Title($"Orientation for your {ship.Type}?")
+						.PageSize(4)
+						.AddChoices(new[] { Orientation.Horizontal, Orientation.Vertical })
+						);
+					DisplayGame(human);
+					Coordinate coordinate;
+					bool isValid = false;
+					do {
+						Console.SetCursorPosition(0, inputRow);
+						string coord = AnsiConsole.Ask<string>($"Position for your {ship.Type}?", ship.Position);
+						if (coord.ToUpperInvariant() == "Q") {
+							Console.SetCursorPosition(0, inputRow);
+							bool sure = AnsiConsole.Confirm("Are you sure?", false);
+							if (sure) {
+								return true;
+							}
+						}
+						isValid = !Coordinate.TryParse(coord, null, out coordinate);
+					} while (isValid);
+
+					newShip = new(ship.Type, coordinate, orientation);
+
+				} while (!game.PlaceShip(human, newShip));
+				myFleet[newShip.Type] = newShip;
+			}
+
+			return false;
+		}
 	}
 
 	private ConsoleKey DisplayAndGetInput(int row, string input)
@@ -235,7 +246,7 @@ internal class BattleshipGame
 		Console.SetCursorPosition(0, row);
 		Console.Write(new string(' ', Console.WindowWidth - 2));
 
-		//Console.SetCursorPosition(0, row);
+		Console.SetCursorPosition(0, row);
 		//Console.Write($"Time remaining: ");
 		//if (TimeRemaining < RedZone) {
 		//	Console.ForegroundColor = ConsoleColor.Red;

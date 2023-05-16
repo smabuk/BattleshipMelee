@@ -1,6 +1,4 @@
-﻿using Xunit.Sdk;
-
-namespace BattleshipEngine.Tests;
+﻿namespace BattleshipEngine.Tests;
 
 public class BoardTests
 {

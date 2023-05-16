@@ -7,8 +7,8 @@ public class GameTests
 	{
 		Game game = new(GameType.Classic);
 
-		Player player1 = game.AddPlayer("Test player");
-		Player player2 = game.AddPlayer("Computer", isComputer: true);
+		PrivatePlayer player1 = game.AddPlayer("Test player");
+		PrivatePlayer player2 = game.AddPlayer("Computer", isComputer: true);
 		Assert.Equal("Computer", player2.Name);
 		Assert.True(player2.IsComputer);
 		Assert.NotEqual(player1, player2);
@@ -51,8 +51,8 @@ public class GameTests
 
 		Assert.True(game.GameOver);
 
-		List<PlayerFinishingPosition> playerFinishingPositions = game.LeaderBoard(player1).ToList();
-		Assert.Equal(1, playerFinishingPositions.Single(s => s.Name == player2.Name).Position);
-		Assert.Equal(2, playerFinishingPositions.Single(s => s.Name == player1.Name).Position);
+		List<PlayerWithScore> leaderboard = game.LeaderBoard().ToList();
+		Assert.Equal(1, leaderboard.Single(s => s.Player.Id == player2.Id).Position);
+		Assert.Equal(2, leaderboard.Single(s => s.Player.Id == player1.Id).Position);
 	}
 }
