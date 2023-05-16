@@ -30,7 +30,7 @@ public record Game(GameType GameType = GameType.Classic)
 		shots[privatePlayer.Id] = new();
 
 		if (isComputer) {
-			PlaceShips(privatePlayer);
+			PlaceShips(privatePlayer, doItForMe: true);
 		}
 
 		return privatePlayer;
@@ -99,7 +99,7 @@ public record Game(GameType GameType = GameType.Classic)
 		}
 	}
 
-	public bool PlaceShips(PrivatePlayer privatePlayer, List<Ship>? shipsToPlace = null)
+	public bool PlaceShips(PrivatePlayer privatePlayer, List<Ship>? shipsToPlace = null, bool doItForMe = false)
 	{
 		bool validUser = IsUserWhoTheySayTheyAre(privatePlayer);
 		if (validUser is false) {
@@ -113,12 +113,17 @@ public record Game(GameType GameType = GameType.Classic)
 		Orientation orientation;
 		Ship newShip;
 
-		if (shipsToPlace is not null) {
+		if (shipsToPlace is not null && doItForMe is false) {
 			foreach (Ship ship in shipsToPlace) {
 				board.PlaceShip(ship);
 			}
 		} else {
-			List<Ship> fleet = board.Fleet.ToList();
+			List<Ship> fleet; 
+			if (shipsToPlace is null) {
+				fleet = board.Fleet.ToList();
+			} else {
+				fleet = shipsToPlace.ToList();
+			}
 			foreach (Ship ship in fleet) {
 				do {
 					row = Random.Shared.Next(1, board.BoardSize + 1);
