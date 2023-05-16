@@ -50,7 +50,7 @@ public sealed class BattleshipCommand : Command<BattleshipCommand.Settings> {
 
 		[Description("Name of the player")]
 		[CommandOption("-u|--user|--username|--player|--playername")]
-		public string PlayerName { get; init; } = "";
+		public string PlayerName { get; init; } = "Human";
 
 
 		public override ValidationResult Validate()

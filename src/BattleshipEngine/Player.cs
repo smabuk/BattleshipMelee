@@ -1,6 +1,6 @@
 ﻿namespace BattleshipEngine;
 
-public record class Player(string Name, bool IsComputer = false)
+public record Player(string Name, bool IsComputer = false)
 {
 	public PlayerId Id { get; internal init; } = Guid.NewGuid();
 
@@ -14,7 +14,7 @@ public record class Player(string Name, bool IsComputer = false)
 	}
 }
 
-public record class PrivatePlayer(string Name, bool IsComputer = false) : Player(Name, IsComputer)
+public record PrivatePlayer(string Name, bool IsComputer = false) : Player(Name, IsComputer)
 {
 	public PlayerId PrivateId { get; internal init; } = Guid.NewGuid();
 

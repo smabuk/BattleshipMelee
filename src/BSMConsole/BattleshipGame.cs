@@ -1,6 +1,4 @@
-﻿using System;
-
-using BattleshipEngine;
+﻿using BattleshipEngine;
 
 namespace BSMConsole;
 internal class BattleshipGame
@@ -12,11 +10,13 @@ internal class BattleshipGame
 
 	private const int OneSecond = 1000;
 
-	private long _timerStart;
+	//private long _timerStart;
 	private int _bottomRow;
 	private int _topRow = int.MinValue;
 	private Dictionary<Coordinate, AttackResult> shots = new();
 	private Dictionary<ShipType, Ship> myFleet = new();
+	private PrivatePlayer human = new("Me");
+	private Player opponent = new("Computer", IsComputer: true);
 
 	internal void Play()
 	{
@@ -26,10 +26,10 @@ internal class BattleshipGame
 		GameStatus gameStatus = GameStatus.AddPlayers;
 
 		//string name = AnsiConsole.Ask<string>("What is your [green]name[/]?", "Human").Trim();
-		PrivatePlayer human = game.AddPlayer(PlayerName);
-		_ = game.AddPlayer("Computer", isComputer: true);
+		human = game.AddPlayer(PlayerName);
+		opponent = Player.PublicPlayer(game.AddPlayer("Computer", isComputer: true));
 
-		DisplayGame(human);
+		DisplayGame(human, opponent);
 		Console.WriteLine();
 		(_, _bottomRow) = Console.GetCursorPosition();
 		int inputRow = _bottomRow + 5;
@@ -42,16 +42,29 @@ internal class BattleshipGame
 			quit = PlaceShips();
 		}
 
-		DisplayGame(human);
+		DisplayGame(human, opponent);
+
+		gameStatus = GameStatus.Attacking;
+
+		Console.SetCursorPosition(0, inputRow + 1);
+
+
+		//for (int i = 1; i < 11; i++) {
+		//	for (int j = 1; j < 11; j++) {
+		//		Coordinate guess = new(i, j);
+		//		shots.Add(guess, game.Fire(human, guess));
+		//	}
+
+		//}
+
+		DisplayGame(human, opponent);
 
 		Console.SetCursorPosition(0, inputRow + 1);
 
 
 
 
-
-
-		void DisplayGame(Player player)
+		void DisplayGame(PrivatePlayer player, Player opponent)
 		{
 			if (_topRow == int.MinValue) {
 				for (int i = 0; i < 20; i++) {
@@ -74,170 +87,76 @@ internal class BattleshipGame
 
 
 			DisplayBoard(player);
+			DisplayBoard(opponent, consoleCol: 44);
 
 		}
 
-		void DisplayBoard(Player? player = null, int consoleCol = 4, int consoleRow = 4)
+		void DisplayBoard(Player? player = null, int consoleCol = 4, int consoleRow = 3)
 		{
 			const string EMPTY = "[blue].[/]";
-			const string SHIP  = "S";
-			const string HIT   = "[red]X[/]";
-			const string MISS  = "O";
+			const string SHIP = "S";
+			const string HIT = "[red]x[/]";
+			const string SUNK = "[red]X[/]";
+			const string MISS = "O";
 
 			Console.SetCursorPosition(consoleCol, consoleRow);
+			AnsiConsole.Markup($"     [green]{player?.Name}[/]");
 
-			int boardSize = game.BoardSize;
-			Console.WriteLine();
 			Console.SetCursorPosition(consoleCol, consoleRow + 1);
-			Console.WriteLine("     1 2 3 4 5 6 7 8 9 10");
+			int boardSize = game.BoardSize;
 			Console.SetCursorPosition(consoleCol, consoleRow + 2);
-			Console.WriteLine("   ┌─────────────────────┐");
+			Console.Write("     1 2 3 4 5 6 7 8 9 10");
+			Console.SetCursorPosition(consoleCol, consoleRow + 3);
+			Console.Write("   ┌─────────────────────┐");
 			for (int row = 0; row < boardSize; row++) {
-				Console.SetCursorPosition(consoleCol, consoleRow + 3 + row);
+				Console.SetCursorPosition(consoleCol, consoleRow + 4 + row);
 				Console.Write($"{Convert.ToChar(row + 'A'),2} │");
 				for (int col = 0; col < boardSize; col++) {
 					string symbol = EMPTY;
 					AnsiConsole.Markup($" {symbol}");
 				}
-				Console.WriteLine(" |");
+				Console.Write(" |");
 			}
-			Console.SetCursorPosition(consoleCol, consoleRow + 13);
-			Console.WriteLine("   └─────────────────────┘");
+			Console.SetCursorPosition(consoleCol, consoleRow + 14);
+			Console.Write("   └─────────────────────┘");
 
 			// Place ships on the board
-
-			//List<Ship> ships = new();
-			//if (player is not null) {
-			//	ships = game.Fleet(player ?? new());
-			//}
-			foreach (Ship ship in myFleet.Values) {
-				foreach (ShipSegment segment in ship.Segments.Values) {
-					Console.SetCursorPosition(consoleCol + 3 + (segment.Coordinate.Col * 2), consoleRow + 2 + segment.Coordinate.Row);
-					string hitormiss = segment.IsHit ? HIT : SHIP;
+			if (player is PrivatePlayer) {
+				foreach (Ship ship in myFleet.Values) {
+					foreach (ShipSegment segment in ship.Segments.Values) {
+						Console.SetCursorPosition(consoleCol + 3 + (segment.Coordinate.Col * 2), consoleRow + 3 + segment.Coordinate.Row);
+						string hitormiss = segment.IsHit ? HIT : SHIP;
+						AnsiConsole.Markup(hitormiss);
+					}
+				}
+			} else {
+				foreach (AttackResult shot in shots.Values.Where(s => s.TargetedPlayer == player)) {
+					Console.SetCursorPosition(consoleCol + 3 + (shot.AttackCoordinate.Col * 2), consoleRow + 3 + shot.AttackCoordinate.Row);
+					bool sunk = shots.Values.Any(s => s.ShipType == shot.ShipType && s.HitOrMiss == AttackResultType.HitAndSunk);
+					string hitormiss = shot.HitOrMiss switch
+					{
+						AttackResultType.Miss => MISS,
+						AttackResultType.Hit => sunk ? SUNK : HIT,
+						AttackResultType.HitAndSunk => SUNK,
+						_ => EMPTY,
+					};
 					AnsiConsole.Markup(hitormiss);
 				}
 			}
-		}
-
-
-		void DisplayGameUsingSpectre(Player player)
-		{
-			Layout layout = new Layout("Root")
-				.SplitRows(
-				new Layout("Top")
-					.SplitColumns(
-					new Layout("Opponent"),
-					new Layout("Player")
-					),
-				new Layout("Bottom")
-					.Size(8)
-					.SplitColumns(
-					new Layout("Prompt"),
-					new Layout("Status")
-					)
-				);
-
-			layout["Prompt"].Update(
-				new Panel(
-					Align.Center(new Text(""), VerticalAlignment.Middle))
-					.Header(player.Name)
-					.NoBorder()
-					.Expand()
-				);
-
-
-
-			Grid playerGrid = new();
-			playerGrid.AddColumn();
-			playerGrid.AddColumn();
-			playerGrid.AddColumn();
-			playerGrid.AddColumn();
-			playerGrid.AddColumn();
-			playerGrid.AddColumn();
-			playerGrid.AddColumn();
-			playerGrid.AddColumn();
-			playerGrid.AddColumn();
-			playerGrid.AddColumn();
-			playerGrid.AddColumn();
-
-			playerGrid.AddRow("", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10");
-			playerGrid.AddRow("A", ".", ".", ".", ".", ".", ".", ".", ".", ".", ".");
-			playerGrid.AddRow("B", ".", ".", ".", ".", ".", ".", ".", ".", ".", ".");
-			playerGrid.AddRow("C", ".", ".", ".", ".", ".", ".", ".", ".", ".", ".");
-			playerGrid.AddRow("D", ".", ".", ".", ".", ".", ".", ".", ".", ".", ".");
-			playerGrid.AddRow("E", ".", ".", ".", ".", ".", ".", ".", ".", ".", ".");
-			playerGrid.AddRow("F", ".", ".", ".", ".", ".", ".", ".", ".", ".", ".");
-			playerGrid.AddRow("G", ".", ".", ".", ".", ".", ".", ".", ".", ".", ".");
-			playerGrid.AddRow("H", ".", ".", ".", ".", ".", ".", ".", ".", ".", ".");
-			playerGrid.AddRow("I", ".", ".", ".", ".", ".", ".", ".", ".", ".", ".");
-			playerGrid.AddRow("J", ".", ".", ".", ".", ".", ".", ".", ".", ".", ".");
-
-			layout["Player"].Update(
-				new Panel(
-					Align.Center(playerGrid, VerticalAlignment.Middle))
-					.Header(player.Name)
-					.Expand()
-				);
-
-			Grid opponentGrid = new();
-			opponentGrid.AddColumn();
-			opponentGrid.AddColumn();
-			opponentGrid.AddColumn();
-			opponentGrid.AddColumn();
-			opponentGrid.AddColumn();
-			opponentGrid.AddColumn();
-			opponentGrid.AddColumn();
-			opponentGrid.AddColumn();
-			opponentGrid.AddColumn();
-			opponentGrid.AddColumn();
-			opponentGrid.AddColumn();
-
-			opponentGrid.AddRow("", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10");
-			opponentGrid.AddRow("A", ".", ".", ".", ".", ".", ".", ".", ".", ".", ".");
-			opponentGrid.AddRow("B", ".", ".", ".", ".", ".", ".", ".", ".", ".", ".");
-			opponentGrid.AddRow("C", ".", ".", ".", ".", ".", ".", ".", ".", ".", ".");
-			opponentGrid.AddRow("D", ".", ".", ".", ".", ".", ".", ".", ".", ".", ".");
-			opponentGrid.AddRow("E", ".", ".", ".", ".", ".", ".", ".", ".", ".", ".");
-			opponentGrid.AddRow("F", ".", ".", ".", ".", ".", ".", ".", ".", ".", ".");
-			opponentGrid.AddRow("G", ".", ".", ".", ".", ".", ".", ".", ".", ".", ".");
-			opponentGrid.AddRow("H", ".", ".", ".", ".", ".", ".", ".", ".", ".", ".");
-			opponentGrid.AddRow("I", ".", ".", ".", ".", ".", ".", ".", ".", ".", ".");
-			opponentGrid.AddRow("J", ".", ".", ".", ".", ".", ".", ".", ".", ".", ".");
-
-			layout["Opponent"].Update(
-				new Panel(
-					Align.Center(opponentGrid, VerticalAlignment.Middle))
-					.Header(game.OpponentName(player))
-					.Expand()
-				);
-
-			if (gameStatus == GameStatus.PlacingShips) {
-
-				layout["Status"].Update(
-					new Panel(
-						Align.Center(new Text(""), VerticalAlignment.Middle))
-						.Header("Ship placement")
-						.Expand()
-					);
-
-			}
-
-			AnsiConsole.Clear();
-			AnsiConsole.Write(layout);
 		}
 
 		bool PlaceShips()
 		{
 			myFleet = game.Fleet(human).ToDictionary(ship => ship.Type);
 
-			DisplayGame(human);
+			DisplayGame(human, opponent);
 
 			List<Ship> fleet = game.Fleet(human).Where(ship => ship.IsPositioned == false).ToList();
 
 			foreach (Ship ship in fleet) {
 				Ship newShip;
 				do {
-					DisplayGame(human);
+					DisplayGame(human, opponent);
 					Console.SetCursorPosition(0, inputRow);
 					Orientation orientation = AnsiConsole.Prompt(
 						new SelectionPrompt<Orientation>()
@@ -245,7 +164,7 @@ internal class BattleshipGame
 						.PageSize(4)
 						.AddChoices(new[] { Orientation.Horizontal, Orientation.Vertical })
 						);
-					DisplayGame(human);
+					DisplayGame(human, opponent);
 					Coordinate coordinate;
 					bool isValid = false;
 					do {

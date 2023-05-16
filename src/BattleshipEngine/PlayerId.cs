@@ -1,4 +1,5 @@
 ﻿namespace BattleshipEngine;
+
 public readonly record struct PlayerId()
 {
 	private Guid Id { get;  init; }
