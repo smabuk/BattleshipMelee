@@ -17,7 +17,8 @@ public static class ShipTypeExtensions
 	{
 		return shipType switch
 		{
-			ShipType.AircraftCarrier => "Aircraft Carrier",
+			ShipType.AircraftCarrier    => "Aircraft Carrier",
+			ShipType.RomulanBattleBagel => "Romulan Battle Bagel",
 			_ => $"{shipType}",
 		};
 	}

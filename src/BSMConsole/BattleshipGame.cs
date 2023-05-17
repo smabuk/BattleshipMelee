@@ -5,7 +5,6 @@ internal class BattleshipGame
 {
 	public string PlayerName { get; set; } = "Me";
 	public bool RandomShipPlacement { get; set; } = false;
-	public bool Verbose { get; set; } = false;
 	public GameType GameType { get; set; } = GameType.Classic;
 
 	private const int ONE_MINUTE = 60000;
@@ -29,7 +28,7 @@ internal class BattleshipGame
 
 	internal void Play()
 	{
-		Game game = new Game();
+		Game game = new Game(GameType);
 
 		GameStatus gameStatus = GameStatus.AddingPlayers;
 
@@ -215,7 +214,7 @@ internal class BattleshipGame
 				Ship newShip;
 				do {
 					DisplayGridContents(human);
-					DisplayStatus(GameStatus.PlacingShips, $" [green]{ship.Type.ToFriendlyString()}[/] ({ship.NoOfSegments} segments): ");
+					DisplayStatus(GameStatus.PlacingShips, $" [green]{ship.Type.ToFriendlyString()}[/] ({ship.NoOfSegments} segments) ");
 					(Orientation Orientation, Coordinate Coordinate)? result = GetShipPlacementFromUser(_inputRow);
 
 					if (!result.HasValue) {

@@ -1,4 +1,6 @@
-﻿namespace BattleshipEngine;
+﻿using System.Drawing;
+
+namespace BattleshipEngine;
 
 public record Ship(ShipType Type)
 {
@@ -36,6 +38,9 @@ public record Ship(ShipType Type)
 
 	private static List<ShipSegment> GetSegmentsWhenPlaced(ShipType type, Coordinate position, Orientation orientation)
 	{
+		if (type is ShipType.RomulanBattleBagel) {
+			return GetRomulanBattleBagelSegments();
+		}
 
 		List<ShipSegment> segments = new();
 
@@ -52,6 +57,23 @@ public record Ship(ShipType Type)
 		}
 
 		return segments;
+
+		List<ShipSegment> GetRomulanBattleBagelSegments()
+		{
+			List<ShipSegment> segments = new();
+			if (orientation is Orientation.Horizontal) {
+				segments.Add(new(new(position.Row + 0, position.Col + 0), false));
+				segments.Add(new(new(position.Row - 1, position.Col + 1), false));
+				segments.Add(new(new(position.Row + 1, position.Col + 1), false));
+				segments.Add(new(new(position.Row + 0, position.Col + 2), false));
+			} else {
+				segments.Add(new(new(position.Row + 0, position.Col + 0), false));
+				segments.Add(new(new(position.Row + 1, position.Col - 1), false));
+				segments.Add(new(new(position.Row + 1, position.Col + 1), false));
+				segments.Add(new(new(position.Row + 2, position.Col + 0), false));
+			}
+			return segments;
+		}
 	}
 
 	public static int GetNoOfSegments(ShipType type) => type switch
@@ -61,7 +83,7 @@ public record Ship(ShipType Type)
 		ShipType.Cruiser => 3,
 		ShipType.Destroyer => 2,
 		ShipType.Submarine => 3,
-		ShipType.RomulanBattleBagel => throw new NotImplementedException(),
+		ShipType.RomulanBattleBagel => 4,
 		_ => throw new NotImplementedException(),
 	};
 

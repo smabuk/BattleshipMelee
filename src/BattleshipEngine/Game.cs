@@ -185,7 +185,7 @@ public record Game(GameType GameType = GameType.Classic)
 	{
 		GameType.Classic => 10,
 		GameType.Melee => throw new NotImplementedException(),
-		GameType.BigBangTheory => throw new NotImplementedException(),
+		GameType.BigBangTheory => 10,
 		_ => throw new NotImplementedException(),
 	};
 

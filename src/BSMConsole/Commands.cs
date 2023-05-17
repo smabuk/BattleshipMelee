@@ -1,22 +1,16 @@
 ﻿namespace BSMConsole;
 
 [Description("The game of Battleship")]
-public sealed class BattleshipCommand : Command<BattleshipCommand.Settings> {
+internal sealed class BattleshipCommand : Command<BattleshipCommand.Settings> {
 
 	public override int Execute([NotNull] CommandContext context, [NotNull] Settings settings) {
 		BattleshipGame battleshipGame = new() {
-			GameType = settings.GameType,
-			PlayerName = settings.PlayerName,
+			GameType            = settings.GameType,
+			PlayerName          = settings.PlayerName,
 			RandomShipPlacement = settings.RandomShipPlacement,
-			Verbose = settings.Verbose
 		};
 
-		if (settings.Play) {
-			battleshipGame.Play();
-		} else {
-			//battleshipGame.DisplayBattleship(settings.Verbose);
-		}
-
+		battleshipGame.Play();
 		return 0;
 	}
 
@@ -28,25 +22,15 @@ public sealed class BattleshipCommand : Command<BattleshipCommand.Settings> {
 		public BattleshipEngine.GameType GameType => Type.ToLower() switch
 		{
 			"classic" => BattleshipEngine.GameType.Classic,
-			"melee" => BattleshipEngine.GameType.Classic,
+			"melee"   => BattleshipEngine.GameType.Melee,
 			"bigbang" => BattleshipEngine.GameType.BigBangTheory,
 			_ => throw new NotImplementedException(),
 		};
-
-		[Description("Display more information")]
-		[CommandOption("-v|--verbose")]
-		[DefaultValue(false)]
-		public bool Verbose { get; init; }
 
 		[Description("Place the ships randomly")]
 		[CommandOption("-r|--random")]
 		[DefaultValue(false)]
 		public bool RandomShipPlacement { get; init; }
-
-		[Description("Play")]
-		[CommandOption("-p|--play")]
-		[DefaultValue(true)]
-		public bool Play { get; init; }
 
 		[Description("Name of the player")]
 		[CommandOption("-u|--user|--username|--player|--playername")]
@@ -58,11 +42,8 @@ public sealed class BattleshipCommand : Command<BattleshipCommand.Settings> {
 		{
 			string[] validTypes = {
 				"classic",
-				"big",
-				"deluxe",
-				"superbig",
-				"new",
-				//"challenge",
+				"bigbang",
+				"melee",
 			};
 
 			if (!validTypes.Contains(Type.ToLower())) {
