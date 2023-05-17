@@ -64,6 +64,24 @@ public record Game(GameType GameType = GameType.Classic)
 		}
 	}
 
+	public IEnumerable<AttackResult> OtherPlayersFire()
+	{
+		foreach (PrivatePlayer privatePlayer in players.Values.Where(p => p.IsComputer)) {
+			Player playerToAttack = Opponent(privatePlayer);
+
+			HashSet<Coordinate> alreadyAttacked = shots[privatePlayer.Id].Select(s => s.AttackCoordinate).ToHashSet();
+			Coordinate attackCoordinate = new(Random.Shared.Next(1, 11), Random.Shared.Next(1, 11));
+			while (alreadyAttacked.Contains(attackCoordinate)) {
+				attackCoordinate = new(Random.Shared.Next(1, 11), Random.Shared.Next(1, 11));
+			}
+
+			AttackResult result = boards[playerToAttack.Id].Attack(attackCoordinate) with { TargetedPlayer = playerToAttack };
+			shots[privatePlayer.Id].Add(result);
+			yield return result;
+		}
+
+	}
+
 	public IEnumerable<PlayerWithScore> LeaderBoard()
 	{
 		List<PlayerWithScore> leaderboard = new();
@@ -181,7 +199,7 @@ public record Game(GameType GameType = GameType.Classic)
 				new (ShipType.Submarine),
 				new (ShipType.Cruiser),
 				new (ShipType.Battleship),
-				new (ShipType.Carrier),
+				new (ShipType.AircraftCarrier),
 			},
 			GameType.BigBangTheory => new ()
 			{
@@ -189,7 +207,7 @@ public record Game(GameType GameType = GameType.Classic)
 				new (ShipType.Submarine),
 				new (ShipType.Cruiser),
 				new (ShipType.RomulanBattleBagel),
-				new (ShipType.Carrier),
+				new (ShipType.AircraftCarrier),
 			},
 			GameType.Melee => throw new NotImplementedException(),
 			_ => throw new NotImplementedException(),

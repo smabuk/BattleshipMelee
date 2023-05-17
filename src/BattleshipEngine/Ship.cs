@@ -41,7 +41,7 @@ public record Ship(ShipType Type)
 		int noOfSegments = type switch
 		{
 			ShipType.Battleship => 4,
-			ShipType.Carrier    => 5,
+			ShipType.AircraftCarrier    => 5,
 			ShipType.Cruiser    => 3,
 			ShipType.Destroyer  => 2,
 			ShipType.Submarine  => 3,

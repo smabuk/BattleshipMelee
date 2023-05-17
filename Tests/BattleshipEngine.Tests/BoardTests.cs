@@ -40,7 +40,7 @@ public class BoardTests
 		success = board.PlaceShip(new(ShipType.Destroyer, "D1", Orientation.Horizontal));
 		Assert.True(success);
 
-		success = board.PlaceShip(new(ShipType.Carrier, "E5", Orientation.Vertical));
+		success = board.PlaceShip(new(ShipType.AircraftCarrier, "E5", Orientation.Vertical));
 		Assert.True(success);
 
 		Assert.Equal(5, board.Fleet.Count(ship => ship.IsPositioned));
@@ -60,7 +60,7 @@ public class BoardTests
 		_ = board.PlaceShip(new(ShipType.Battleship, "B1", Orientation.Horizontal));
 		_ = board.PlaceShip(new(ShipType.Submarine, "C1", Orientation.Horizontal));
 		_ = board.PlaceShip(new(ShipType.Destroyer, "D1", Orientation.Horizontal));
-		_ = board.PlaceShip(new(ShipType.Carrier, "E5", Orientation.Vertical));
+		_ = board.PlaceShip(new(ShipType.AircraftCarrier, "E5", Orientation.Vertical));
 		Assert.False(board.IsFleetSunk);
 
 		AttackResult actual;
@@ -102,15 +102,15 @@ public class BoardTests
 		Assert.False(board.IsFleetSunk);
 
 		actual = board.Attack("E5");
-		Assert.Equal(new("E5", AttackResultType.Hit, ShipType.Carrier), actual);
+		Assert.Equal(new("E5", AttackResultType.Hit, ShipType.AircraftCarrier), actual);
 		actual = board.Attack("F5");
-		Assert.Equal(new("F5", AttackResultType.Hit, ShipType.Carrier), actual);
+		Assert.Equal(new("F5", AttackResultType.Hit, ShipType.AircraftCarrier), actual);
 		actual = board.Attack("G5");
-		Assert.Equal(new("G5", AttackResultType.Hit, ShipType.Carrier), actual);
+		Assert.Equal(new("G5", AttackResultType.Hit, ShipType.AircraftCarrier), actual);
 		actual = board.Attack("H5");
-		Assert.Equal(new("H5", AttackResultType.Hit, ShipType.Carrier), actual);
+		Assert.Equal(new("H5", AttackResultType.Hit, ShipType.AircraftCarrier), actual);
 		actual = board.Attack("I5");
-		Assert.Equal(new("I5", AttackResultType.HitAndSunk, ShipType.Carrier), actual);
+		Assert.Equal(new("I5", AttackResultType.HitAndSunk, ShipType.AircraftCarrier), actual);
 		Assert.True(board.IsFleetSunk);
 
 	}

@@ -7,12 +7,12 @@ public sealed class ShipTests
 	[InlineData(ShipType.Cruiser,    Orientation.Horizontal, "A2", "A4", 3)]
 	[InlineData(ShipType.Submarine,  Orientation.Horizontal, "A1", "A3", 3)]
 	[InlineData(ShipType.Battleship, Orientation.Horizontal, "B6", "B9", 4)]
-	[InlineData(ShipType.Carrier,    Orientation.Horizontal, "A1", "A5", 5)]
+	[InlineData(ShipType.AircraftCarrier,    Orientation.Horizontal, "A1", "A5", 5)]
 	[InlineData(ShipType.Destroyer,  Orientation.Vertical,   "A2", "B2", 2)]
 	[InlineData(ShipType.Cruiser,    Orientation.Vertical,   "A1", "C1", 3)]
 	[InlineData(ShipType.Submarine,  Orientation.Vertical,   "A1", "C1", 3)]
 	[InlineData(ShipType.Battleship, Orientation.Vertical,   "B6", "E6", 4)]
-	[InlineData(ShipType.Carrier,    Orientation.Vertical,   "A1", "E1", 5)]
+	[InlineData(ShipType.AircraftCarrier,    Orientation.Vertical,   "A1", "E1", 5)]
 	public void ShipValidWhenCreated(ShipType shipType, Orientation orientation, string startPosition, string lastPosition, int expectedSegmentCount)
 	{
 		Ship actual = new Ship(shipType, startPosition, orientation);

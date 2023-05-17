@@ -8,7 +8,7 @@ public class GameTests
 			new(ShipType.Battleship, "B1", Orientation.Horizontal),
 			new(ShipType.Submarine,  "C1", Orientation.Horizontal),
 			new(ShipType.Destroyer,  "D1", Orientation.Horizontal),
-			new(ShipType.Carrier,    "E5", Orientation.Vertical)
+			new(ShipType.AircraftCarrier,    "E5", Orientation.Vertical)
 		};
 
 	[Fact]
@@ -73,7 +73,7 @@ public class GameTests
 		Coordinate battleshipPosition = ships.Single(ship => ship.Type == ShipType.Battleship).Position;
 		Coordinate submarinePosition  = ships.Single(ship => ship.Type == ShipType.Submarine).Position;
 		Coordinate destroyerPosition  = ships.Single(ship => ship.Type == ShipType.Destroyer).Position;
-		Coordinate carrierPosition    = ships.Single(ship => ship.Type == ShipType.Carrier).Position;
+		Coordinate carrierPosition    = ships.Single(ship => ship.Type == ShipType.AircraftCarrier).Position;
 
 		Assert.True(
 			cruiserPosition       == "A1" 
@@ -109,7 +109,7 @@ public class GameTests
 		Coordinate battleshipPosition = ships.Single(ship => ship.Type == ShipType.Battleship).Position;
 		Coordinate submarinePosition  = ships.Single(ship => ship.Type == ShipType.Submarine).Position;
 		Coordinate destroyerPosition  = ships.Single(ship => ship.Type == ShipType.Destroyer).Position;
-		Coordinate carrierPosition    = ships.Single(ship => ship.Type == ShipType.Carrier).Position;
+		Coordinate carrierPosition    = ships.Single(ship => ship.Type == ShipType.AircraftCarrier).Position;
 
 		Assert.False(
 			cruiserPosition       == "A1" 
