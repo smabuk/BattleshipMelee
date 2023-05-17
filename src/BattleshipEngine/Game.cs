@@ -82,9 +82,9 @@ public record Game(GameType GameType = GameType.Classic)
 
 	}
 
-	public IEnumerable<PlayerWithScore> LeaderBoard()
+	public IEnumerable<RankedPlayer> LeaderBoard()
 	{
-		List<PlayerWithScore> leaderboard = new();
+		List<RankedPlayer> leaderboard = new();
 
 		foreach (Player privatePlayer in players.Values) {
 			Player player = Player.PublicPlayer(privatePlayer);
@@ -102,13 +102,13 @@ public record Game(GameType GameType = GameType.Classic)
 			}
 			score += boards[player.Id].IsFleetSunk ? -100 : 0;
 			score += boards[Opponent(player).Id].IsFleetSunk ? 100 : 0;
-			PlayerWithScore leaderboardPosition = new(player, Score: score);
+			RankedPlayer leaderboardPosition = new(player, Score: score);
 			leaderboard.Add(leaderboardPosition);
 		}
 
 		int position = 0;
 		int previousScore = int.MaxValue;
-		foreach (PlayerWithScore leaderboardPosition in leaderboard.OrderByDescending(p => p.Score)) {
+		foreach (RankedPlayer leaderboardPosition in leaderboard.OrderByDescending(p => p.Score)) {
 			if (leaderboardPosition.Score < previousScore) {
 				previousScore = leaderboardPosition.Score;
 				position++;

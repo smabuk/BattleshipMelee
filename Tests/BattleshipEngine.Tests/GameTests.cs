@@ -52,7 +52,7 @@ public class GameTests
 
 		Assert.True(game.GameOver);
 
-		List<PlayerWithScore> leaderboard = game.LeaderBoard().ToList();
+		List<RankedPlayer> leaderboard = game.LeaderBoard().ToList();
 		Assert.Equal(1, leaderboard.Single(s => s.Player.Id == privatePlayer2.Id).Position);
 		Assert.Equal(2, leaderboard.Single(s => s.Player.Id == privatePlayer1.Id).Position);
 	}

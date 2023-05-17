@@ -5,18 +5,14 @@ internal class BattleshipGame
 {
 	public string PlayerName { get; set; } = "Me";
 	public bool RandomShipPlacement { get; set; } = false;
-	public bool Verbose{ get; set; } = false;
-	public GameType GameType{ get; set; } = GameType.Classic;
+	public bool Verbose { get; set; } = false;
+	public GameType GameType { get; set; } = GameType.Classic;
 
-	private const int OneMinute = 60000;
+	private const int ONE_MINUTE = 60000;
+	private const int LEFT_GRID = 4;
+	private const int RIGHT_GRID = 34;
 
-	private int _bottomRow;
-	private int _topRow = int.MinValue;
-	private Dictionary<Coordinate, AttackResult> shots = new();
-	private Dictionary<ShipType, Ship> myFleet = new();
-	private PrivatePlayer human = new("Me");
-	private Player opponent = new("Computer", IsComputer: true);
-	private readonly Dictionary<ShipType, string> _shipDisplay = new()
+	private static readonly Dictionary<ShipType, string> _shipDisplay = new()
 		{
 			{ ShipType.Battleship, "b" },
 			{ ShipType.Cruiser, "c" },
@@ -26,9 +22,17 @@ internal class BattleshipGame
 			{ ShipType.RomulanBattleBagel, "r" },
 		};
 
+	private int _bottomRow;
+	private int _topRow = int.MinValue;
+	private int _inputRow;
+
+	private readonly Dictionary<Coordinate, AttackResult> shots = new();
+	private Dictionary<ShipType, Ship> myFleet = new();
+	private PrivatePlayer human = new("Me");
+	private Player opponent = new("Computer", IsComputer: true);
+
 	internal void Play()
 	{
-
 		Game game = new Game();
 
 		GameStatus gameStatus = GameStatus.AddingPlayers;
@@ -36,10 +40,10 @@ internal class BattleshipGame
 		human = game.AddPlayer(PlayerName);
 		opponent = Player.PublicPlayer(game.AddPlayer("Computer", isComputer: true));
 
-		DisplayGame(human, opponent);
-		Console.WriteLine();
-		(_, _bottomRow) = Console.GetCursorPosition();
-		int inputRow = _bottomRow + 5;
+		DisplayGame();
+		_inputRow = _bottomRow - 1;
+
+		DisplayGrid(human);
 
 		gameStatus = GameStatus.PlacingShips;
 		DisplayStatus(gameStatus);
@@ -51,110 +55,37 @@ internal class BattleshipGame
 			PlaceShips();
 		}
 
-		DisplayBoards(human, opponent);
+		if (game.AreFleetsReady) {
+			DisplayBoards(human, opponent);
 
-		gameStatus = GameStatus.Attacking;
-		DisplayStatus(gameStatus);
+			gameStatus = GameStatus.Attacking;
+			DisplayStatus(gameStatus);
 
-		Console.SetCursorPosition(0, inputRow + 1);
-
-		// Attack all of the spaces to clear the board
-		//for (int i = 1; i < 11; i++) {
-		//	for (int j = 1; j < 11; j++) {
-		//		Coordinate guess = new(i, j);
-		//		shots.Add(guess, game.Fire(human, guess));
-		//		List<AttackResult> attackResults = game.OtherPlayersFire().ToList();
-		//	}
-		//}
-
-
-		DisplayBoards(human, opponent);
-		
-		string currentCoordinateString = "";
-		while (game.GameOver is false) {
-
-			ConsoleKey key = DisplayAndGetInput(inputRow, currentCoordinateString);
-			if (key == ConsoleKey.Escape) {
-				break;
-			} else if (key == ConsoleKey.Enter && currentCoordinateString.Length > 1) {
-				shots.TryAdd(currentCoordinateString, game.Fire(human, currentCoordinateString));
-				List<AttackResult> attackResults = game.OtherPlayersFire().ToList();
-				currentCoordinateString = "";
-				DisplayBoards(human, opponent);
-			} else if (key == ConsoleKey.Backspace && currentCoordinateString.Length > 0) {
-				currentCoordinateString = currentCoordinateString[..^1];
-			} else if (key >= ConsoleKey.A && key <= ConsoleKey.J && currentCoordinateString.Length == 0) {
-				currentCoordinateString += key;
-			} else if (key >= ConsoleKey.D1 && key <= ConsoleKey.D9 && currentCoordinateString.Length == 1) {
-				currentCoordinateString += key.ToString()[^1];
-			} else if (key == ConsoleKey.D0 && currentCoordinateString[1] == '1') {
-				currentCoordinateString += key.ToString()[^1];
+			while (game.GameOver is false) {
+				if (TryGetCoordinateFromUser(_inputRow, out Coordinate coordinate)) {
+					shots.TryAdd(coordinate, game.Fire(human, coordinate));
+					List<AttackResult> attackResults = game.OtherPlayersFire().ToList();
+					DisplayBoards(human, opponent);
+				} else {
+					break;
+				}
 			}
 		}
 
 		gameStatus = GameStatus.GameOver;
 		DisplayStatus(gameStatus);
-		
-		Console.SetCursorPosition(0, inputRow + 1);
-		Console.WriteLine("Results");
-		List<PlayerWithScore> leaderboard = game.LeaderBoard().ToList();
-		foreach (PlayerWithScore playerWithScore in leaderboard) {
-			AnsiConsole.MarkupLineInterpolated($"   [{(playerWithScore.Position == 1 ? "gold1 on black" : "white on black")}]{playerWithScore.Position} {playerWithScore.Score, 3}  {playerWithScore.Player.Name, -20} [/]");
+
+		Console.SetCursorPosition(0, _inputRow + 1);
+		Console.WriteLine();
+		Console.WriteLine($" {(game.GameOver ? "GAME OVER" : "Game abandoned")} - Results");
+		AnsiConsole.MarkupLineInterpolated($"  [bold]Pos Score  Player Name    [/]");
+		List<RankedPlayer> leaderboard = game.LeaderBoard().ToList();
+		foreach (RankedPlayer playerWithScore in leaderboard) {
+			AnsiConsole.MarkupLineInterpolated($"   [{(playerWithScore.Position == 1 ? "gold1 on black" : "on black")}]{playerWithScore.Position}   {playerWithScore.Score,3}   {playerWithScore.Player.Name,-20}[/]");
 		}
 
 
-
-		void DisplayGame(PrivatePlayer player, Player opponent)
-		{
-			Console.Clear();
-			if (_topRow == int.MinValue) {
-				for (int i = 0; i < 20; i++) {
-					Console.WriteLine();
-				}
-
-				(int _, _topRow) = Console.GetCursorPosition();
-				_topRow -= 20;
-			}
-
-			Console.SetCursorPosition(0, _topRow);
-			Console.Write($"┌{new string('─', 68 - 4 - 0)}┐"); 
-			Console.WriteLine();
-			for (int row = 0; row < 20; row++) {
-				Console.Write($"|{new string(' ', 68 - 4 - 0)}|");
-				Console.WriteLine();
-			}
-			Console.Write($"└{new string('─', 68 - 4 - 0)}┘");
-			Console.WriteLine();
-
-			Console.SetCursorPosition(3, _topRow);
-			Console.Write($"T H E   G A M E   O F   B A T T L E S H I P");
-
-			DisplayBoards(player, opponent);
-		}
-
-		void DisplayStatus(GameStatus status) {
-			Console.SetCursorPosition(7, _topRow + 2);
-			string message = status switch
-			{
-				GameStatus.PlacingShips => "Place your ships  ",
-				GameStatus.AddingPlayers   => "Adding players    ",
-				GameStatus.Attacking    => "Attack those ships",
-				GameStatus.GameOver     => "GAME OVER         ",
-				_                       => "                  "
-			};
-			AnsiConsole.Markup($"[yellow]{message}[/]{new string(' ', 30)}");  // did use Console.WindowWidth
-
-		}
-
-		void DisplayBoards(PrivatePlayer player, Player opponent)
-		{
-			DisplayGrid(player);
-			UpdateBoard(player);
-			DisplayGrid(opponent, consoleCol: 34);
-			UpdateBoard(opponent, consoleCol: 34);
-		}
-
-		void UpdateBoard(Player? player = null, int consoleCol = 4, int consoleRow = 4, bool noGridOrSea = false)
+		void UpdateBoard(Player? player = null, int offsetCol = LEFT_GRID, int offsetRow = 2)
 		{
 			const string HIT_COLOUR = "red";
 			const string MISS_COLOUR = "blue";
@@ -162,19 +93,23 @@ internal class BattleshipGame
 			const string SUNK = $"[{HIT_COLOUR}]X[/]";
 			const string MISS = $"[{MISS_COLOUR}]O[/]";
 
-			// Place ships on the board
+			offsetRow += _topRow;
+
+			// Display ships on the board
 			if (player is PrivatePlayer) {
 				foreach (Ship ship in myFleet.Values) {
 					foreach (ShipSegment segment in ship.Segments.Values) {
-						Console.SetCursorPosition(consoleCol + 3 + (segment.Coordinate.Col * 2), consoleRow + 2 + segment.Coordinate.Row);
-						string hitormiss = segment.IsHit ? $"[{HIT_COLOUR}]{GetShipShape(ship.Type)}[/]" : GetShipShape(ship.Type, ship.Orientation);
+						Console.SetCursorPosition(offsetCol + 3 + (segment.Coordinate.Col * 2), offsetRow + 2 + segment.Coordinate.Row);
+						string hitormiss = segment.IsHit
+							? $"[{HIT_COLOUR}]{GetShipShape(ship.Type)}[/]"
+							: GetShipShape(ship.Type, ship.Orientation);
 						hitormiss = ship.IsSunk ? hitormiss.ToUpper() : hitormiss;
 						AnsiConsole.Markup(hitormiss);
 					}
 				}
 			} else {
 				foreach (AttackResult shot in shots.Values.Where(s => s.TargetedPlayer == player)) {
-					Console.SetCursorPosition(consoleCol + 3 + (shot.AttackCoordinate.Col * 2), consoleRow + 2 + shot.AttackCoordinate.Row);
+					Console.SetCursorPosition(offsetCol + 3 + (shot.AttackCoordinate.Col * 2), offsetRow + 2 + shot.AttackCoordinate.Row);
 					bool sunk = shots.Values.Any(s => s.ShipType == shot.ShipType && s.HitOrMiss == AttackResultType.HitAndSunk);
 					string hitormiss = shot.HitOrMiss switch
 					{
@@ -190,37 +125,86 @@ internal class BattleshipGame
 			}
 		}
 
-		void DisplayGrid(Player? player = null, int consoleCol = 4, int consoleRow = 4)
+		void DisplayGame()
+		{
+			if (_topRow == int.MinValue) {
+				for (int i = 0; i < 22; i++) {
+					Console.WriteLine();
+				}
+
+				(int _, _topRow) = Console.GetCursorPosition();
+				_topRow -= 22;
+			}
+			(_, _bottomRow) = Console.GetCursorPosition();
+
+			Console.SetCursorPosition(0, _topRow);
+			Console.Write($"┌{new string('─', 68 - 4 - 0)}┐");
+			Console.WriteLine();
+			for (int row = 0; row < 18; row++) {
+				Console.Write($"|{new string(' ', 68 - 4 - 0)}|");
+				Console.WriteLine();
+			}
+			Console.Write($"└{new string('─', 68 - 4 - 0)}┘");
+			Console.WriteLine();
+
+			Console.SetCursorPosition(3, _topRow);
+			Console.Write($" T H E   G A M E   O F   B A T T L E S H I P ");
+		}
+
+		void DisplayStatus(GameStatus status, string markupMessage = "") {
+			string message = status switch
+			{
+				GameStatus.PlacingShips => "Place your ships  ",
+				GameStatus.AddingPlayers => "Adding players    ",
+				GameStatus.Attacking => "Attack those ships",
+				GameStatus.GameOver => "GAME OVER         ",
+				_ => "                  "
+			};
+			Console.SetCursorPosition(8, _topRow + 17);
+			Console.Write(new string(' ', 40));
+			Console.SetCursorPosition(8, _topRow + 17);
+			AnsiConsole.Markup($"[yellow]{message}[/]{markupMessage}");
+		}
+
+		void DisplayBoards(PrivatePlayer player, Player opponent)
+		{
+			DisplayGrid(opponent);
+			UpdateBoard(opponent);
+			DisplayGrid(player, offsetCol: RIGHT_GRID);
+			UpdateBoard(player, offsetCol: RIGHT_GRID);
+		}
+
+		void DisplayGrid(Player? player = null, int offsetCol = LEFT_GRID, int offsetRow = 2)
 		{
 			const string SEA_COLOUR = "blue";
-			const string SEA = $"[{SEA_COLOUR}].[/]";
+			const char SEA = '.';
 			int boardSize = game.BoardSize;
+			offsetRow += _topRow;
 
-			Console.SetCursorPosition(consoleCol, consoleRow);
+			Console.SetCursorPosition(offsetCol, offsetRow);
 			AnsiConsole.Markup($"     [green]{player?.Name}[/]");
 
-			Console.SetCursorPosition(consoleCol, consoleRow + 1);
+			Console.SetCursorPosition(offsetCol, offsetRow + 1);
 			Console.Write("     1 2 3 4 5 6 7 8 9 10");
-			Console.SetCursorPosition(consoleCol, consoleRow + 2);
+			Console.SetCursorPosition(offsetCol, offsetRow + 2);
 			Console.Write("   ┌─────────────────────┐");
 			for (int row = 0; row < boardSize; row++) {
-				Console.SetCursorPosition(consoleCol, consoleRow + 3 + row);
-				Console.Write($"{Convert.ToChar(row + 'A'),2} │");
-				for (int col = 0; col < boardSize; col++) {
-					string symbol = SEA;
-					AnsiConsole.Markup($" {symbol}");
-				}
+				Console.SetCursorPosition(offsetCol, offsetRow + 3 + row);
+				Console.Write($"{Convert.ToChar(row + 'A'),2} │ ");
+				string sea = string.Join(" ", Enumerable.Repeat($"{SEA}", boardSize));
+				AnsiConsole.Markup($"[{SEA_COLOUR}]{sea}[/]");
 				Console.Write(" |");
 			}
-			Console.SetCursorPosition(consoleCol, consoleRow + 13);
+			Console.SetCursorPosition(offsetCol, offsetRow + 13);
 			Console.Write("   └─────────────────────┘");
 		}
+
 
 		void PlaceShips()
 		{
 			myFleet = game.Fleet(human).ToDictionary(ship => ship.Type);
 
-			DisplayBoards(human, opponent);
+			UpdateBoard(human);
 
 			List<Ship> fleet = game.Fleet(human).Where(ship => ship.IsPositioned == false).ToList();
 
@@ -228,30 +212,68 @@ internal class BattleshipGame
 				Ship newShip;
 				do {
 					UpdateBoard(human);
-					Console.SetCursorPosition(0, inputRow);
+					Console.SetCursorPosition(0, _inputRow);
 					Console.Write(new string(' ', 50));
-					Console.SetCursorPosition(0, inputRow);
-					Orientation orientation = AnsiConsole.Prompt(
-					new SelectionPrompt<Orientation>()
-						.Title($"Orientation for your {ship.Type} ({ship.NoOfSegments} segments)?")
-						.PageSize(4)
-						.AddChoices(new[] { Orientation.Horizontal, Orientation.Vertical })
-						);
-					UpdateBoard(human);
-					Coordinate coordinate;
-					bool isValid = false;
-					do {
-						Console.SetCursorPosition(0, inputRow);
-						Console.Write(new string(' ', 50));
-						Console.SetCursorPosition(0, inputRow);
-						string coord = AnsiConsole.Ask<string>($"Position for your {ship.Type} ({ship.NoOfSegments} segments)?");
-						isValid = !Coordinate.TryParse(coord, null, out coordinate);
-					} while (isValid);
+					Console.SetCursorPosition(0, _inputRow);
+					(Orientation Orientation, Coordinate Coordinate)? result = GetShipPlacementFromUser(_inputRow, ship);
 
-					newShip = new(ship.Type, coordinate, orientation);
+					if (!result.HasValue) {
+						return;
+					}
+					newShip = new(ship.Type, result.Value.Coordinate, result.Value.Orientation);
 
 				} while (!game.PlaceShip(human, newShip));
 				myFleet[newShip.Type] = newShip;
+			}
+		}
+	}
+
+	private static bool TryGetCoordinateFromUser(int inputRow, out Coordinate coordinate)
+	{
+		string currentCoordinateString = "";
+
+		while (true) {
+			ConsoleKey key = DisplayAndGetInput(inputRow, currentCoordinateString, "Target coordinates: ");
+			if (key == ConsoleKey.Escape) {
+				coordinate = default;
+				return false;
+			} else if (key == ConsoleKey.Enter && currentCoordinateString.Length > 1) {
+				coordinate = new Coordinate(currentCoordinateString);
+				return true;
+			} else if (key == ConsoleKey.Backspace && currentCoordinateString.Length > 0) {
+				currentCoordinateString = currentCoordinateString[..^1];
+			} else if (key >= ConsoleKey.A && key <= ConsoleKey.J && currentCoordinateString.Length == 0) {
+				currentCoordinateString += key;
+			} else if (key >= ConsoleKey.D1 && key <= ConsoleKey.D9 && currentCoordinateString.Length == 1) {
+				currentCoordinateString += key.ToString()[^1];
+			} else if (key == ConsoleKey.D0 && currentCoordinateString[1] == '1') {
+				currentCoordinateString += key.ToString()[^1];
+			}
+		}
+	}
+
+	private static (Orientation Orientation, Coordinate Coordinate)? GetShipPlacementFromUser(int inputRow, Ship ship)
+	{
+		string currentCoordinateString = "";
+		Orientation orientation = Orientation.Horizontal;
+
+		while (true) {
+			ConsoleKey key = DisplayAndGetInput(inputRow, currentCoordinateString, $"Coordinates for {ship.Type} ({ship.NoOfSegments} segments) ({orientation}): ");
+			if (key == ConsoleKey.Escape) {
+				return null;
+			} else if (key == ConsoleKey.Enter && currentCoordinateString.Length > 1) {
+				Coordinate coordinate = new Coordinate(currentCoordinateString);
+				return (orientation, coordinate);
+			} else if (key == ConsoleKey.Backspace && currentCoordinateString.Length > 0) {
+				currentCoordinateString = currentCoordinateString[..^1];
+			} else if (key >= ConsoleKey.A && key <= ConsoleKey.J && currentCoordinateString.Length == 0) {
+				currentCoordinateString += key;
+			} else if (key >= ConsoleKey.D1 && key <= ConsoleKey.D9 && currentCoordinateString.Length == 1) {
+				currentCoordinateString += key.ToString()[^1];
+			} else if (key is ConsoleKey.LeftArrow or ConsoleKey.RightArrow) {
+				orientation = Orientation.Horizontal ;
+			} else if (key is ConsoleKey.UpArrow or ConsoleKey.DownArrow) {
+				orientation = Orientation.Vertical ;
 			}
 		}
 	}
@@ -264,7 +286,7 @@ internal class BattleshipGame
 		return _shipDisplay[(ShipType)shipType];
 	}
 
-	private static ConsoleKey DisplayAndGetInput(int row, string input)
+	private static ConsoleKey DisplayAndGetInput(int row, string input, string message = "Press <Esc> to exit ... ")
 	{
 		Console.SetCursorPosition(0, row);
 		Console.Write(new string(' ', Console.WindowWidth - 2));
@@ -272,10 +294,10 @@ internal class BattleshipGame
 		Console.SetCursorPosition(0, row);
 
 		Console.ResetColor();
-		Console.Write($" Enter a coordinate then Enter, or press <Esc> to exit... {input}");
+		Console.Write($" {message}{input}");
 
 		// If we get a timeout return a key that we don't use (Zoom)
-		return KeyReader.ReadKey(OneMinute) ?? ConsoleKey.Zoom;
+		return KeyReader.ReadKey(ONE_MINUTE) ?? ConsoleKey.Zoom;
 	}
 
 	enum GameStatus
