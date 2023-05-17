@@ -45,11 +45,12 @@ public sealed class BattleshipCommand : Command<BattleshipCommand.Settings> {
 
 		[Description("Play")]
 		[CommandOption("-p|--play")]
-		[DefaultValue(false)]
+		[DefaultValue(true)]
 		public bool Play { get; init; }
 
 		[Description("Name of the player")]
 		[CommandOption("-u|--user|--username|--player|--playername")]
+		[DefaultValue("Human")]
 		public string PlayerName { get; init; } = "Human";
 
 

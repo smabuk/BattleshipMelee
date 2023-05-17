@@ -1,14 +1,13 @@
 ﻿//BattleShipsEngine.Execute();
 
-CommandApp app = new();
+CommandApp<BattleshipCommand> app = new ();
 
 app.Configure(config => {
 
 	config.AddCommand<BattleshipCommand>("battleship")
 		.WithExample(new[] { "battleship", })
-		.WithExample(new[] { "battleship", "classic" })
-		.WithExample(new[] { "battleship", "melee", "-u name" })
-		.WithExample(new[] { "battleship", "bigbang" });
+		.WithExample(new[] { "battleship", "--random" })
+		.WithExample(new[] { "battleship", "-u name" });
 });
 
 return app.Run(args);

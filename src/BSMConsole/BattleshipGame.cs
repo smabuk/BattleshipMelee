@@ -106,6 +106,7 @@ internal class BattleshipGame
 
 		void DisplayGame(PrivatePlayer player, Player opponent)
 		{
+			Console.Clear();
 			if (_topRow == int.MinValue) {
 				for (int i = 0; i < 20; i++) {
 					Console.WriteLine();
