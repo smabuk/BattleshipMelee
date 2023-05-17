@@ -29,10 +29,9 @@ internal class BattleshipGame
 	internal void Play()
 	{
 
-		bool quit = false;
 		Game game = new Game();
 
-		GameStatus gameStatus = GameStatus.AddPlayers;
+		GameStatus gameStatus = GameStatus.AddingPlayers;
 
 		human = game.AddPlayer(PlayerName);
 		opponent = Player.PublicPlayer(game.AddPlayer("Computer", isComputer: true));
@@ -49,7 +48,7 @@ internal class BattleshipGame
 			game.PlaceShips(human, doItForMe: true);
 			myFleet = game.Fleet(human).ToDictionary(ship => ship.Type, ship => ship);
 		} else {
-			quit = PlaceShips();
+			PlaceShips();
 		}
 
 		DisplayBoards(human, opponent);
@@ -117,7 +116,7 @@ internal class BattleshipGame
 			}
 
 			Console.SetCursorPosition(0, _topRow);
-			Console.Write($"┌{new string('─', 68 - 4 - 0)}┐");  // did use Console.WindowWidth
+			Console.Write($"┌{new string('─', 68 - 4 - 0)}┐"); 
 			Console.WriteLine();
 			for (int row = 0; row < 20; row++) {
 				Console.Write($"|{new string(' ', 68 - 4 - 0)}|");
@@ -125,6 +124,9 @@ internal class BattleshipGame
 			}
 			Console.Write($"└{new string('─', 68 - 4 - 0)}┘");
 			Console.WriteLine();
+
+			Console.SetCursorPosition(3, _topRow);
+			Console.Write($"T H E   G A M E   O F   B A T T L E S H I P");
 
 			DisplayBoards(player, opponent);
 		}
@@ -134,7 +136,7 @@ internal class BattleshipGame
 			string message = status switch
 			{
 				GameStatus.PlacingShips => "Place your ships  ",
-				GameStatus.AddPlayers   => "Adding players    ",
+				GameStatus.AddingPlayers   => "Adding players    ",
 				GameStatus.Attacking    => "Attack those ships",
 				GameStatus.GameOver     => "GAME OVER         ",
 				_                       => "                  "
@@ -145,22 +147,54 @@ internal class BattleshipGame
 
 		void DisplayBoards(PrivatePlayer player, Player opponent)
 		{
-			DisplayBoard(player);
-			DisplayBoard(opponent, consoleCol: 34);
+			DisplayGrid(player);
+			UpdateBoard(player);
+			DisplayGrid(opponent, consoleCol: 34);
+			UpdateBoard(opponent, consoleCol: 34);
 		}
 
-		void DisplayBoard(Player? player = null, int consoleCol = 4, int consoleRow = 4)
+		void UpdateBoard(Player? player = null, int consoleCol = 4, int consoleRow = 4, bool noGridOrSea = false)
 		{
-			const string SEA_COLOUR = "blue";
 			const string HIT_COLOUR = "red";
 			const string MISS_COLOUR = "blue";
-			const string SEA = $"[{SEA_COLOUR}].[/]";
 			const string HIT = $"[{HIT_COLOUR}]x[/]";
 			const string SUNK = $"[{HIT_COLOUR}]X[/]";
 			const string MISS = $"[{MISS_COLOUR}]O[/]";
 
+			// Place ships on the board
+			if (player is PrivatePlayer) {
+				foreach (Ship ship in myFleet.Values) {
+					foreach (ShipSegment segment in ship.Segments.Values) {
+						Console.SetCursorPosition(consoleCol + 3 + (segment.Coordinate.Col * 2), consoleRow + 2 + segment.Coordinate.Row);
+						string hitormiss = segment.IsHit ? $"[{HIT_COLOUR}]{GetShipShape(ship.Type)}[/]" : GetShipShape(ship.Type, ship.Orientation);
+						hitormiss = ship.IsSunk ? hitormiss.ToUpper() : hitormiss;
+						AnsiConsole.Markup(hitormiss);
+					}
+				}
+			} else {
+				foreach (AttackResult shot in shots.Values.Where(s => s.TargetedPlayer == player)) {
+					Console.SetCursorPosition(consoleCol + 3 + (shot.AttackCoordinate.Col * 2), consoleRow + 2 + shot.AttackCoordinate.Row);
+					bool sunk = shots.Values.Any(s => s.ShipType == shot.ShipType && s.HitOrMiss == AttackResultType.HitAndSunk);
+					string hitormiss = shot.HitOrMiss switch
+					{
+						AttackResultType.Miss => MISS,
+						AttackResultType.Hit => sunk ? $"[{HIT_COLOUR}]{GetShipShape(shot.ShipType).ToUpper()}[/]" : $"[{HIT_COLOUR}]{GetShipShape(shot.ShipType)}[/]",
+						AttackResultType.HitAndSunk => $"[{HIT_COLOUR}]{GetShipShape(shot.ShipType).ToUpper()}[/]",
+						AttackResultType.AlreadyAttacked => throw new ArgumentOutOfRangeException(nameof(shot.HitOrMiss)),
+						AttackResultType.InvalidPosition => throw new ArgumentOutOfRangeException(nameof(shot.HitOrMiss)),
+						_ => throw new ArgumentOutOfRangeException(nameof(shot.HitOrMiss)),
+					};
+					AnsiConsole.Markup(hitormiss);
+				}
+			}
+		}
+
+		void DisplayGrid(Player? player = null, int consoleCol = 4, int consoleRow = 4)
+		{
+			const string SEA_COLOUR = "blue";
+			const string SEA = $"[{SEA_COLOUR}].[/]";
 			int boardSize = game.BoardSize;
-			
+
 			Console.SetCursorPosition(consoleCol, consoleRow);
 			AnsiConsole.Markup($"     [green]{player?.Name}[/]");
 
@@ -179,65 +213,37 @@ internal class BattleshipGame
 			}
 			Console.SetCursorPosition(consoleCol, consoleRow + 13);
 			Console.Write("   └─────────────────────┘");
-
-			// Place ships on the board
-			if (player is PrivatePlayer) {
-				foreach (Ship ship in myFleet.Values) {
-					foreach (ShipSegment segment in ship.Segments.Values) {
-						Console.SetCursorPosition(consoleCol + 3 + (segment.Coordinate.Col * 2), consoleRow + 2 + segment.Coordinate.Row);
-						string hitormiss = segment.IsHit ? $"[{HIT_COLOUR}]{GetShipShape(ship.Type)}[/]" : GetShipShape(ship.Type, ship.Orientation);
-						hitormiss = ship.IsSunk ? hitormiss.ToUpper() : hitormiss;
-						AnsiConsole.Markup(hitormiss);
-					}
-				}
-			} else {
-				foreach (AttackResult shot in shots.Values.Where(s => s.TargetedPlayer == player)) {
-					Console.SetCursorPosition(consoleCol + 3 + (shot.AttackCoordinate.Col * 2), consoleRow + 2 + shot.AttackCoordinate.Row);
-					bool sunk = shots.Values.Any(s => s.ShipType == shot.ShipType && s.HitOrMiss == AttackResultType.HitAndSunk);
-					string hitormiss = shot.HitOrMiss switch
-					{
-						AttackResultType.Miss       => MISS,
-						AttackResultType.Hit        => sunk ? $"[{HIT_COLOUR}]{GetShipShape(shot.ShipType).ToUpper()}[/]" : $"[{HIT_COLOUR}]{GetShipShape(shot.ShipType)}[/]",
-						AttackResultType.HitAndSunk => $"[{HIT_COLOUR}]{GetShipShape(shot.ShipType).ToUpper()}[/]",
-						_ => SEA,
-					};
-					AnsiConsole.Markup(hitormiss);
-				}
-			}
 		}
 
-		bool PlaceShips()
+		void PlaceShips()
 		{
 			myFleet = game.Fleet(human).ToDictionary(ship => ship.Type);
 
-			DisplayGame(human, opponent);
+			DisplayBoards(human, opponent);
 
 			List<Ship> fleet = game.Fleet(human).Where(ship => ship.IsPositioned == false).ToList();
 
 			foreach (Ship ship in fleet) {
 				Ship newShip;
 				do {
-					DisplayGame(human, opponent);
+					UpdateBoard(human);
+					Console.SetCursorPosition(0, inputRow);
+					Console.Write(new string(' ', 50));
 					Console.SetCursorPosition(0, inputRow);
 					Orientation orientation = AnsiConsole.Prompt(
-						new SelectionPrompt<Orientation>()
-						.Title($"Orientation for your {ship.Type}?")
+					new SelectionPrompt<Orientation>()
+						.Title($"Orientation for your {ship.Type} ({ship.NoOfSegments} segments)?")
 						.PageSize(4)
 						.AddChoices(new[] { Orientation.Horizontal, Orientation.Vertical })
 						);
-					DisplayGame(human, opponent);
+					UpdateBoard(human);
 					Coordinate coordinate;
 					bool isValid = false;
 					do {
 						Console.SetCursorPosition(0, inputRow);
-						string coord = AnsiConsole.Ask<string>($"Position for your {ship.Type}?", ship.Position);
-						if (coord.ToUpperInvariant() == "Q") {
-							Console.SetCursorPosition(0, inputRow);
-							bool sure = AnsiConsole.Confirm("Are you sure?", false);
-							if (sure) {
-								return true;
-							}
-						}
+						Console.Write(new string(' ', 50));
+						Console.SetCursorPosition(0, inputRow);
+						string coord = AnsiConsole.Ask<string>($"Position for your {ship.Type} ({ship.NoOfSegments} segments)?");
 						isValid = !Coordinate.TryParse(coord, null, out coordinate);
 					} while (isValid);
 
@@ -246,8 +252,6 @@ internal class BattleshipGame
 				} while (!game.PlaceShip(human, newShip));
 				myFleet[newShip.Type] = newShip;
 			}
-
-			return false;
 		}
 	}
 
@@ -275,7 +279,7 @@ internal class BattleshipGame
 
 	enum GameStatus
 	{
-		AddPlayers,
+		AddingPlayers,
 		PlacingShips,
 		Attacking,
 		GameOver,

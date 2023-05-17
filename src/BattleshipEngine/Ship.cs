@@ -16,6 +16,7 @@ public record Ship(ShipType Type)
 	public Orientation Orientation { get; }
 	public Coordinate Position { get; }
 
+	public int  NoOfSegments => GetNoOfSegments(Type);
 	public bool IsPositioned => Segments.Any();
 	public bool IsAfloat => IsPositioned && Segments.Values.Any(s => s.IsHit is false);
 	public bool IsSunk => IsPositioned && Segments.Values.All(s => s.IsHit);
@@ -38,16 +39,7 @@ public record Ship(ShipType Type)
 
 		List<ShipSegment> segments = new();
 
-		int noOfSegments = type switch
-		{
-			ShipType.Battleship => 4,
-			ShipType.AircraftCarrier    => 5,
-			ShipType.Cruiser    => 3,
-			ShipType.Destroyer  => 2,
-			ShipType.Submarine  => 3,
-			ShipType.RomulanBattleBagel => throw new NotImplementedException(),
-			_ => throw new NotImplementedException(),
-		};
+		int noOfSegments = GetNoOfSegments(type);
 
 		for (int i = 0; i < noOfSegments; i++) {
 			Coordinate coord = orientation switch
@@ -61,5 +53,16 @@ public record Ship(ShipType Type)
 
 		return segments;
 	}
+
+	public static int GetNoOfSegments(ShipType type) => type switch
+	{
+		ShipType.Battleship => 4,
+		ShipType.AircraftCarrier => 5,
+		ShipType.Cruiser => 3,
+		ShipType.Destroyer => 2,
+		ShipType.Submarine => 3,
+		ShipType.RomulanBattleBagel => throw new NotImplementedException(),
+		_ => throw new NotImplementedException(),
+	};
 
 }
