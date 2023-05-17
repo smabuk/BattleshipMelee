@@ -2,11 +2,14 @@
 
 public record struct Coordinate(int Row, int Col) : IParsable<Coordinate>
 {
-	public Coordinate(string coord) : this(Parse(coord).Row, Parse(coord).Col)
-	{
-	}
+	const int MIN = 1;
+	const int MAX = 10; // J
+	const char MIN_LETTER = 'A';
+	const char MAX_LETTER = 'J';
 
-	public override readonly string ToString() => IsValid ? $"{Convert.ToChar(Row - 1 + 'A')}{Col}" : "";
+	public Coordinate(string coord) : this(Parse(coord).Row, Parse(coord).Col) { }
+
+	public override readonly string ToString() => IsValid ? $"{Convert.ToChar(Row - 1 + MIN_LETTER)}{Col}" : "";
 
 	public static implicit operator Coordinate((int Row, int Col) coord) => new(coord.Row, coord.Col);
 	public static implicit operator Coordinate(string input) => Parse(input, null);
@@ -21,7 +24,7 @@ public record struct Coordinate(int Row, int Col) : IParsable<Coordinate>
 	/// <returns>The index to access the board array</returns>
 	public readonly int BoardIndex(int boardSize = 10) => ((Row - 1) * boardSize) + (Col - 1);
 
-	public readonly bool IsValid => (Row is > 0 and <= 26) && (Col is > 0 and <= 26);
+	public readonly bool IsValid => (Row is >= MIN and <= MAX) && (Col is >= MIN and <= MAX);
 
 	#region IParsable
 
@@ -38,11 +41,11 @@ public record struct Coordinate(int Row, int Col) : IParsable<Coordinate>
 		}
 
 		char rowLetter = coordinate.ToUpperInvariant()[0];
-		if (rowLetter is < 'A' or > 'Z') {
+		if (rowLetter is < MIN_LETTER or > MAX_LETTER) {
 			throw new ArgumentOutOfRangeException(nameof(coordinate), OUT_OF_RANGE_MESSAGE);
 		}
 
-		int row = rowLetter - 'A' + 1;
+		int row = rowLetter - MIN_LETTER + 1;
 		int col = int.Parse(coordinate[1..], NumberStyles.None);
 		if (col <= 0) {
 			throw new ArgumentOutOfRangeException(nameof(coordinate), OUT_OF_RANGE_MESSAGE);
@@ -54,41 +57,29 @@ public record struct Coordinate(int Row, int Col) : IParsable<Coordinate>
 
 	public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out Coordinate result)
 	{
-		//Coordinate coordinate = new();
-		//try {
-		//	coordinate = Parse(s);
-		//}
-		//catch (Exception) {
-		//	result = coordinate;
-		//	return false;
-		//}
-
-		//result = coordinate;
-		//return true;
-
 		if (s is null) {
-			result = new();
+			result = default!;
 			return false;
 		}
 
 		if (s.Length < 2) {
-			result = new();
+			result = default!;
 			return false;
 		}
 
 		char rowLetter = s.ToUpperInvariant()[0];
-		if (rowLetter is < 'A' or > 'Z') {
-			result = new();
+		if (rowLetter is < MIN_LETTER or > MAX_LETTER) {
+			result = default!;
 			return false;
 		}
 
-		int row = rowLetter - 'A' + 1;
+		int row = rowLetter - MIN_LETTER + 1;
 		bool success = int.TryParse(s[1..], null, out int col);
-		if (success && col > 0) {
+		if (success && col > 0 && (col is >= MIN and <= MAX)) {
 			result = new Coordinate(row, col);
 			return true;
 		} else {
-			result = new();
+			result = default!;
 			return false;
 		}
 	}

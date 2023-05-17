@@ -96,4 +96,26 @@ public sealed class CoordinateTests
 		Assert.Equal("The input string '-3' was not in a correct format.", ((FormatException)exception).Message);
 	}
 
+	[Theory]
+	[InlineData("A1",   1,  1, true)]
+	[InlineData("A2",   1,  2, true)]
+	[InlineData("A3",   1,  3, true)]
+	[InlineData("J3",  10,  3, true)]
+	[InlineData("J10", 10, 10, true)]
+	[InlineData("a1",   1,  1, true)]
+	[InlineData("j10", 10, 10, true)]
+	[InlineData("q1",   0,  0, false)]
+	[InlineData("k1",   0,  0, false)]
+	[InlineData("j11",  0,  0, false)]
+	[InlineData("j-3",  0,  0, false)]
+	[InlineData("-3",   0,  0, false)]
+	public void TryToParseAndReturnCoordinate(string input, int row, int col, bool expected)
+	{
+		bool actual = Coordinate.TryParse(input, null, out Coordinate coordinate);
+		Assert.Equal(expected, actual);
+		if (actual) {
+			Assert.Equal(new(row, col), coordinate);
+		}
+	}
+
 }

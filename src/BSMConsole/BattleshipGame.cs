@@ -81,7 +81,7 @@ internal class BattleshipGame
 				shots.TryAdd(currentCoordinateString, game.Fire(human, currentCoordinateString));
 				List<AttackResult> attackResults = game.OtherPlayersFire().ToList();
 				currentCoordinateString = "";
-				DisplayGame(human, opponent);
+				DisplayBoards(human, opponent);
 			} else if (key == ConsoleKey.Backspace && currentCoordinateString.Length > 0) {
 				currentCoordinateString = currentCoordinateString[..^1];
 			} else if (key >= ConsoleKey.A && key <= ConsoleKey.J && currentCoordinateString.Length == 0) {
