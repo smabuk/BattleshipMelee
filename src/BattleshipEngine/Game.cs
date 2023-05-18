@@ -184,7 +184,7 @@ public record Game(GameType GameType = GameType.Classic)
 	public static int GetBoardSize(GameType gameType) => gameType switch
 	{
 		GameType.Classic => 10,
-		GameType.Melee => throw new NotImplementedException(),
+		GameType.Melee => throw new NotImplementedException("Melee is not implemented yet"),
 		GameType.BigBangTheory => 10,
 		_ => throw new NotImplementedException(),
 	};

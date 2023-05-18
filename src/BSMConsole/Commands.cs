@@ -22,7 +22,7 @@ internal sealed class BattleshipCommand : Command<BattleshipCommand.Settings> {
 		public BattleshipEngine.GameType GameType => Type.ToLower() switch
 		{
 			"classic" => BattleshipEngine.GameType.Classic,
-			"melee"   => BattleshipEngine.GameType.Melee,
+			"melee"   => throw new NotImplementedException("Melee is not implemented yet"),
 			"bigbang" => BattleshipEngine.GameType.BigBangTheory,
 			_ => throw new NotImplementedException(),
 		};

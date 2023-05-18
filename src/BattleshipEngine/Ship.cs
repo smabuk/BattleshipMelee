@@ -14,7 +14,7 @@ public record Ship(ShipType Type)
 	}
 
 	public Orientation Orientation { get; }
-	public Coordinate Position { get; }
+	public Coordinate? Position { get; }
 
 	public int  NoOfSegments => GetNoOfSegments(Type);
 	public bool IsPositioned => Segments.Any();

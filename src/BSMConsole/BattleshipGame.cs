@@ -251,7 +251,7 @@ internal class BattleshipGame
 			ConsoleKey key = DisplayAndGetInput(INPUT_COL, inputRow, CLEAR_WIDTH, $"[bold]{currentCoordinateString}[/]", "     Target coordinates: ");
 			switch (key) {
 				case ConsoleKey.Escape:
-					coordinate = default;
+					coordinate = new(0, 0);
 					return false;
 				case ConsoleKey.Enter when currentCoordinateString.Length > 1:
 					coordinate = new Coordinate(currentCoordinateString);

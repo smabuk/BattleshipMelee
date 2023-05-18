@@ -1,6 +1,6 @@
 ﻿namespace BattleshipEngine;
 
-public record struct Coordinate(int Row, int Col) : IParsable<Coordinate>
+public record Coordinate(int Row, int Col) : IParsable<Coordinate>
 {
 	const int MIN = 1;
 	const int MAX = 10; // J
@@ -9,7 +9,7 @@ public record struct Coordinate(int Row, int Col) : IParsable<Coordinate>
 
 	public Coordinate(string coord) : this(Parse(coord).Row, Parse(coord).Col) { }
 
-	public override readonly string ToString() => IsValid ? $"{Convert.ToChar(Row - 1 + MIN_LETTER)}{Col}" : "";
+	public override string ToString() => IsValid ? $"{Convert.ToChar(Row - 1 + MIN_LETTER)}{Col}" : "";
 
 	public static implicit operator Coordinate((int Row, int Col) coord) => new(coord.Row, coord.Col);
 	public static implicit operator Coordinate(string input) => Parse(input, null);
@@ -22,9 +22,9 @@ public record struct Coordinate(int Row, int Col) : IParsable<Coordinate>
 	/// </summary>
 	/// <param name="boardSize">The width and height of the board</param>
 	/// <returns>The index to access the board array</returns>
-	public readonly int BoardIndex(int boardSize = 10) => ((Row - 1) * boardSize) + (Col - 1);
+	public int BoardIndex(int boardSize = 10) => ((Row - 1) * boardSize) + (Col - 1);
 
-	public readonly bool IsValid => (Row is >= MIN and <= MAX) && (Col is >= MIN and <= MAX);
+	public bool IsValid => (Row is >= MIN and <= MAX) && (Col is >= MIN and <= MAX);
 
 	#region IParsable
 
@@ -53,23 +53,23 @@ public record struct Coordinate(int Row, int Col) : IParsable<Coordinate>
 		return new Coordinate(row, col);
 	}
 
-	public static Coordinate Parse(string coordinate, IFormatProvider? provider) => Parse(coordinate);
+	public static Coordinate Parse(string s, IFormatProvider? provider = null) => Parse(s);
 
 	public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, [MaybeNullWhen(false)] out Coordinate result)
 	{
 		if (s is null) {
-			result = default!;
+			result = default;
 			return false;
 		}
 
 		if (s.Length < 2) {
-			result = default!;
+			result = default;
 			return false;
 		}
 
 		char rowLetter = s.ToUpperInvariant()[0];
 		if (rowLetter is < MIN_LETTER or > MAX_LETTER) {
-			result = default!;
+			result = default;
 			return false;
 		}
 
@@ -79,7 +79,7 @@ public record struct Coordinate(int Row, int Col) : IParsable<Coordinate>
 			result = new Coordinate(row, col);
 			return true;
 		} else {
-			result = default!;
+			result = default;
 			return false;
 		}
 	}
