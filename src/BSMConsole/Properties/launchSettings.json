@@ -2,7 +2,11 @@
   "profiles": {
     "BSMConsole": {
       "commandName": "Project",
-      "commandLineArgs": "battleship bigbang --random"
+      "commandLineArgs": ""
+    },
+    "BSMConsole BigBang with random placement": {
+      "commandName": "Project",
+      "commandLineArgs": "bigbang --random"
     }
   }
 }
