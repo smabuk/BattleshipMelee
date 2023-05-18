@@ -14,7 +14,7 @@ internal record Board(int BoardSize)
 			Ship ship = Fleet[fleetIndex];
 			if (ship.IsPositioned is false && ship.Type == shipToPlace.Type) {
 				foreach (Coordinate coordinate in shipToPlace.Segments.Keys) {
-					if (coordinate.Row > BoardSize || coordinate.Col > BoardSize) {
+					if (coordinate.Row < 1 || coordinate.Row > BoardSize || coordinate.Col < 1 || coordinate.Col > BoardSize) {
 						return false;
 					}
 					if (placedSegments.Contains(coordinate)) {

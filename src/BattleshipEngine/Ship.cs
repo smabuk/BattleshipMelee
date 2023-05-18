@@ -1,6 +1,4 @@
-﻿using System.Drawing;
-
-namespace BattleshipEngine;
+﻿namespace BattleshipEngine;
 
 public record Ship(ShipType Type)
 {

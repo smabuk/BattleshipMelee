@@ -20,7 +20,7 @@ internal class BattleshipGame
 
 	private int _topRow = int.MinValue;
 
-	private readonly Dictionary<Coordinate, AttackResult> shots = new();
+	private readonly List<AttackResult> _attackResults = new();
 	private Dictionary<ShipType, Ship> myFleet = new();
 
 	private PrivatePlayer player = new("Me");
@@ -58,8 +58,8 @@ internal class BattleshipGame
 
 			while (game.GameOver is false) {
 				if (TryGetCoordinateFromUser(_topRow + INPUT_ROW, out Coordinate coordinate)) {
-					shots.TryAdd(coordinate, game.Fire(player, coordinate));
-					List<AttackResult> attackResults = game.OtherPlayersFire().ToList();
+					_attackResults.Add(game.Fire(player, coordinate));
+					_attackResults.AddRange(game.OtherPlayersFire());
 					DisplayBoards(player, opponent);
 				} else {
 					gameStatus = GameStatus.Abandoned;
@@ -80,6 +80,7 @@ internal class BattleshipGame
 			DisplayShotsOnGrid(opponent);
 
 			DisplayGrid(player, offsetCol: RIGHT_GRID);
+			DisplayShotsOnGrid(player, RIGHT_GRID);
 			DisplayShipsOnGrid(myFleet.Values, RIGHT_GRID);
 		}
 
@@ -156,20 +157,23 @@ internal class BattleshipGame
 			const string MISS = $"[{MISS_COLOUR}]O[/]";
 
 			int offsetRow = _topRow + BOARD_ROW;
+			IEnumerable<AttackResult> shots = _attackResults.Where(s => s.TargetedPlayer?.Id == player.Id);
 
-			foreach (AttackResult shot in shots.Values.Where(s => s.TargetedPlayer == player)) {
+			foreach (AttackResult shot in shots) {
 				Console.SetCursorPosition(offsetCol + 3 + (shot.AttackCoordinate.Col * 2), offsetRow + 2 + shot.AttackCoordinate.Row);
-				bool sunk = shots.Values.Any(s => s.ShipType == shot.ShipType && s.HitOrMiss == AttackResultType.HitAndSunk);
-				string hitormiss = shot.HitOrMiss switch
-				{
-					AttackResultType.Miss => MISS,
-					AttackResultType.Hit => sunk ? $"[{SUNK_COLOUR}]{GetShipShape(shot.ShipType).ToUpper()}[/]" : $"[{HIT_COLOUR}]{GetShipShape(shot.ShipType)}[/]",
-					AttackResultType.HitAndSunk => $"[{SUNK_COLOUR}]{GetShipShape(shot.ShipType).ToUpper()}[/]",
-					AttackResultType.AlreadyAttacked => throw new ArgumentOutOfRangeException(nameof(shot.HitOrMiss)),
-					AttackResultType.InvalidPosition => throw new ArgumentOutOfRangeException(nameof(shot.HitOrMiss)),
-					_ => throw new ArgumentOutOfRangeException(nameof(shot.HitOrMiss)),
-				};
-				AnsiConsole.Markup(hitormiss);
+				bool sunk = shots.Any(s => s.ShipType == shot.ShipType && s.HitOrMiss == AttackResultType.HitAndSunk);
+				if (shot.HitOrMiss is AttackResultType.Miss or AttackResultType.Hit or AttackResultType.HitAndSunk) {
+					string hitormiss = shot.HitOrMiss switch
+					{
+						AttackResultType.Miss => MISS,
+						AttackResultType.Hit => sunk ? $"[{SUNK_COLOUR}]{GetShipShape(shot.ShipType).ToUpper()}[/]" : $"[{HIT_COLOUR}]{GetShipShape(shot.ShipType)}[/]",
+						AttackResultType.HitAndSunk => $"[{SUNK_COLOUR}]{GetShipShape(shot.ShipType).ToUpper()}[/]",
+						AttackResultType.AlreadyAttacked => throw new ArgumentOutOfRangeException(nameof(shot.HitOrMiss)),
+						AttackResultType.InvalidPosition => throw new ArgumentOutOfRangeException(nameof(shot.HitOrMiss)),
+						_ => throw new ArgumentOutOfRangeException(nameof(shot.HitOrMiss)),
+					};
+					AnsiConsole.Markup(hitormiss);
+				}
 			}
 		}
 
