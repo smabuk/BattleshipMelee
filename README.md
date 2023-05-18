@@ -2,7 +2,7 @@
 
 ## Timeline
 - [x] Headless version of Battleship with tests
-- [x] Simple 2 player Battleship in the command line
+- [x] Simple 2 player Battleship in the command line vs computer
 - [ ] 2 player Battleship using a choice of clients
 - [ ] Melee Battleship
 
