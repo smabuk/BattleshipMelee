@@ -5,6 +5,10 @@
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddSignalR();
+
+builder.Services.AddSingleton<GameService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -16,5 +20,10 @@ if (app.Environment.IsDevelopment()) {
 app.UseHttpsRedirection();
 
 app.MapHub<GameHub>("/bsm");
+
+app.MapGet("/players", (GameService gameService) =>
+{
+	return gameService.Clients.Values.Select(p => Player.PublicPlayer(p)).ToList();
+});
 
 app.Run();

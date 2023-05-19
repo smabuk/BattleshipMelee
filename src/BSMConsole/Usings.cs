@@ -1,4 +1,6 @@
-﻿global using System.ComponentModel;
+﻿global using Microsoft.AspNetCore.SignalR.Client;
+
+global using System.ComponentModel;
 global using System.Diagnostics.CodeAnalysis;
 
 global using BSMConsole;

@@ -7,6 +7,10 @@
     "BSMConsole BigBang with random placement": {
       "commandName": "Project",
       "commandLineArgs": "bigbang --random"
+    },
+    "BSMConsole Networked": {
+      "commandName": "Project",
+      "commandLineArgs": "-n --host localhost --port 7284"
     }
   }
 }

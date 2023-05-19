@@ -6,6 +6,8 @@ internal class BattleshipGame
 	public string PlayerName { get; set; } = "Me";
 	public bool RandomShipPlacement { get; set; } = false;
 	public GameType GameType { get; set; } = GameType.Classic;
+	public bool NetworkPlay = false;
+	public string Uri = "";
 
 	// Game layout constants
 	private const int LEFT_GRID = 4;
@@ -20,6 +22,8 @@ internal class BattleshipGame
 
 	private int _topRow = int.MinValue;
 
+	private HubConnection hubConnection = default!;
+	
 	private readonly List<AttackResult> _attackResults = new();
 	private Dictionary<ShipType, Ship> myFleet = new();
 
@@ -46,21 +50,21 @@ internal class BattleshipGame
 			game.PlaceShips(player, doItForMe: true);
 			myFleet = game.Fleet(player).ToDictionary(ship => ship.Type, ship => ship);
 		} else {
-			DisplayGrid(player);
-			PlaceShips();
+			DisplayGrid(player, game);
+			PlaceShips(game);
 		}
 
 		if (game.AreFleetsReady) {
 
 			gameStatus = GameStatus.Attacking;
 			DisplayStatus(gameStatus);
-			DisplayBoards(player, opponent);
+			DisplayBoards(player, opponent, myFleet.Values, game);
 
 			while (game.GameOver is false) {
 				if (TryGetCoordinateFromUser(_topRow + INPUT_ROW, out Coordinate coordinate)) {
 					_attackResults.Add(game.Fire(player, coordinate));
 					_attackResults.AddRange(game.OtherPlayersFire());
-					DisplayBoards(player, opponent);
+					DisplayBoards(player, opponent, myFleet.Values, game);
 				} else {
 					gameStatus = GameStatus.Abandoned;
 					break;
@@ -71,169 +75,254 @@ internal class BattleshipGame
 		gameStatus = game.GameOver ? GameStatus.GameOver : GameStatus.Abandoned;
 		DisplayStatus(gameStatus);
 
-		DisplayFinalSummary();
+		DisplayFinalSummary(game);
+	}
 
+	internal async Task PlayNetworkGame()
+	{
+		GameStatus gameStatus = GameStatus.AddingPlayers;
 
-		void DisplayBoards(PrivatePlayer player, Player opponent)
-		{
-			DisplayGrid(opponent);
-			DisplayShotsOnGrid(opponent);
+		await PrepareNetwork(Uri);
+		player = await RegisterPlayer(PlayerName);
+		opponent = await FindOpponent(true);
 
-			DisplayGrid(player, offsetCol: RIGHT_GRID);
-			DisplayShotsOnGrid(player, RIGHT_GRID);
-			DisplayShipsOnGrid(myFleet.Values, RIGHT_GRID);
+		_topRow = PrepareGameSpace();
+
+		DisplayGame();
+
+		gameStatus = GameStatus.PlacingShips;
+		DisplayStatus(gameStatus);
+
+		Game game = new Game(GameType);
+
+		if (RandomShipPlacement) {
+			game.PlaceShips(player, doItForMe: true);
+			myFleet = game.Fleet(player).ToDictionary(ship => ship.Type, ship => ship);
+		} else {
+			DisplayGrid(player, game);
+			PlaceShips(game);
 		}
 
-		void DisplayGame()
-		{
-			Console.SetCursorPosition(0, _topRow);
-			Console.Write($"┌{new string('─', GAME_WIDTH - 2)}┐");
-			Console.WriteLine();
-			for (int row = 0; row < GAME_HEIGHT - 4; row++) {
-				Console.Write($"│{new string(' ', GAME_WIDTH - 2)}│");
-				Console.WriteLine();
-			}
-			Console.Write($"└{new string('─', GAME_WIDTH - 2)}┘");
-			Console.WriteLine();
+		if (game.AreFleetsReady) {
 
-			Console.SetCursorPosition(3, _topRow);
-			Console.Write($" T H E   G A M E   O F   B A T T L E S H I P ");
-		}
+			gameStatus = GameStatus.Attacking;
+			DisplayStatus(gameStatus);
+			DisplayBoards(player, opponent, myFleet.Values, game);
 
-		void DisplayGrid(Player player, int offsetCol = LEFT_GRID)
-		{
-			const string SEA_COLOUR = "blue on black";
-			const char SEA = '.';
-			int boardSize = game.BoardSize;
-			int offsetRow = _topRow + BOARD_ROW;
-
-			Console.SetCursorPosition(offsetCol, offsetRow);
-			AnsiConsole.Markup($"     [green]{player?.Name}[/]");
-
-			Console.SetCursorPosition(offsetCol, offsetRow + 1);
-			Console.Write("     1 2 3 4 5 6 7 8 9 10");
-			Console.SetCursorPosition(offsetCol, offsetRow + 2);
-			Console.Write("   ┌─────────────────────┐");
-			for (int row = 0; row < boardSize; row++) {
-				Console.SetCursorPosition(offsetCol, offsetRow + 3 + row);
-				Console.Write($"{Convert.ToChar(row + 'A'),2} │ ");
-				string sea = string.Join(" ", Enumerable.Repeat($"{SEA}", boardSize));
-				AnsiConsole.Markup($"[{SEA_COLOUR}]{sea}[/]");
-				Console.Write(" │");
-			}
-			Console.SetCursorPosition(offsetCol, offsetRow + 13);
-			Console.Write("   └─────────────────────┘");
-		}
-
-		void DisplayShipsOnGrid(IEnumerable<Ship>? ships, int offsetCol = LEFT_GRID)
-		{
-			const string HIT_COLOUR = "red";
-			const string HIT = $"[{HIT_COLOUR}]x[/]";
-			const string MISS_COLOUR = "blue";
-			const string MISS = $"[{MISS_COLOUR}]O[/]";
-
-			int offsetRow = _topRow + BOARD_ROW;
-
-			// Display ships on the board
-			if (ships is not null) {
-				foreach (Ship ship in ships) {
-					foreach (ShipSegment segment in ship.Segments.Values) {
-						Console.SetCursorPosition(offsetCol + 3 + (segment.Coordinate.Col * 2), offsetRow + 2 + segment.Coordinate.Row);
-						string hitormiss = segment.IsHit
-							? $"[{HIT_COLOUR}]{GetShipShape(ship.Type)}[/]"
-							: GetShipShape(ship.Type);
-						hitormiss = ship.IsSunk ? hitormiss.ToUpper() : hitormiss;
-						AnsiConsole.Markup(hitormiss);
-					}
+			while (game.GameOver is false) {
+				if (TryGetCoordinateFromUser(_topRow + INPUT_ROW, out Coordinate coordinate)) {
+					_attackResults.Add(game.Fire(player, coordinate));
+					_attackResults.AddRange(game.OtherPlayersFire());
+					DisplayBoards(player, opponent, myFleet.Values, game);
+				} else {
+					gameStatus = GameStatus.Abandoned;
+					break;
 				}
 			}
 		}
 
-		void DisplayShotsOnGrid(Player player, int offsetCol = LEFT_GRID)
-		{
-			const string HIT_COLOUR = "red on black";
-			const string SUNK_COLOUR = $"red on black";
-			const string MISS_COLOUR = "blue on black";
-			const string MISS = $"[{MISS_COLOUR}]O[/]";
+		gameStatus = game.GameOver ? GameStatus.GameOver : GameStatus.Abandoned;
+		DisplayStatus(gameStatus);
 
-			int offsetRow = _topRow + BOARD_ROW;
-			IEnumerable<AttackResult> shots = _attackResults.Where(s => s.TargetedPlayer?.Id == player.Id);
+		DisplayFinalSummary(game);
+	}
 
-			foreach (AttackResult shot in shots) {
-				Console.SetCursorPosition(offsetCol + 3 + (shot.AttackCoordinate.Col * 2), offsetRow + 2 + shot.AttackCoordinate.Row);
-				bool sunk = shots.Any(s => s.ShipType == shot.ShipType && s.HitOrMiss == AttackResultType.HitAndSunk);
-				if (shot.HitOrMiss is AttackResultType.Miss or AttackResultType.Hit or AttackResultType.HitAndSunk) {
-					string hitormiss = shot.HitOrMiss switch
-					{
-						AttackResultType.Miss => MISS,
-						AttackResultType.Hit => sunk ? $"[{SUNK_COLOUR}]{GetShipShape(shot.ShipType).ToUpper()}[/]" : $"[{HIT_COLOUR}]{GetShipShape(shot.ShipType)}[/]",
-						AttackResultType.HitAndSunk => $"[{SUNK_COLOUR}]{GetShipShape(shot.ShipType).ToUpper()}[/]",
-						AttackResultType.AlreadyAttacked => throw new ArgumentOutOfRangeException(nameof(shot.HitOrMiss)),
-						AttackResultType.InvalidPosition => throw new ArgumentOutOfRangeException(nameof(shot.HitOrMiss)),
-						_ => throw new ArgumentOutOfRangeException(nameof(shot.HitOrMiss)),
-					};
-					AnsiConsole.Markup(hitormiss);
+	private void PlaceShips(Game game)
+	{
+		myFleet = game.Fleet(player).ToDictionary(ship => ship.Type);
+
+		DisplayShipsOnGrid(myFleet.Values);
+
+		List<Ship> fleet = game.Fleet(player).Where(ship => ship.IsPositioned == false).ToList();
+
+		foreach (Ship ship in fleet) {
+			Ship newShip;
+			do {
+				DisplayShipsOnGrid(myFleet.Values);
+				DisplayStatus(GameStatus.PlacingShips, $" [green]{ship.Type.ToFriendlyString()}[/] ({ship.NoOfSegments} segments) ");
+				(Orientation Orientation, Coordinate Coordinate)? result = GetShipPlacementFromUser(_topRow + INPUT_ROW);
+
+				if (!result.HasValue) {
+					return;
 				}
-			}
-		}
+				newShip = new(ship.Type, result.Value.Coordinate, result.Value.Orientation);
 
-		void DisplayFinalSummary()
-		{
-			Console.SetCursorPosition(0, _topRow + GAME_HEIGHT - 2);
+			} while (!game.PlaceShip(player, newShip));
+			myFleet[newShip.Type] = newShip;
+		}
+	}
+
+	private void DisplayBoards(PrivatePlayer player, Player opponent, IEnumerable<Ship> myFleetOfShips, Game game)
+	{
+		DisplayGrid(opponent, game);
+		DisplayShotsOnGrid(opponent);
+
+		DisplayGrid(player, game, offsetCol: RIGHT_GRID);
+		DisplayShotsOnGrid(player, RIGHT_GRID);
+		DisplayShipsOnGrid(myFleetOfShips, RIGHT_GRID);
+	}
+
+	private void DisplayGame()
+	{
+		Console.SetCursorPosition(0, _topRow);
+		Console.Write($"┌{new string('─', GAME_WIDTH - 2)}┐");
+		Console.WriteLine();
+		for (int row = 0; row < GAME_HEIGHT - 4; row++) {
+			Console.Write($"│{new string(' ', GAME_WIDTH - 2)}│");
 			Console.WriteLine();
-			Console.WriteLine();
-			Console.WriteLine($" Results");
-			AnsiConsole.MarkupLineInterpolated($"  [bold]Pos Score  Player Name    [/]");
-			List<RankedPlayer> leaderboard = game.LeaderBoard().ToList();
-			foreach (RankedPlayer playerWithScore in leaderboard) {
-				AnsiConsole.MarkupLineInterpolated($"   [{(playerWithScore.Position == 1 ? "gold1 on black" : "on black")}]{playerWithScore.Position}   {playerWithScore.Score,3}   {playerWithScore.Player.Name,-20}[/]");
-			}
 		}
+		Console.Write($"└{new string('─', GAME_WIDTH - 2)}┘");
+		Console.WriteLine();
 
-		void DisplayStatus(GameStatus status, string markupMessage = "")
-		{
-			string message = status switch
-			{
-				GameStatus.PlacingShips => "Place your ships  ",
-				GameStatus.AddingPlayers => "Adding players    ",
-				GameStatus.Attacking => "Attack those ships",
-				GameStatus.GameOver => "GAME OVER         ",
-				GameStatus.Abandoned => "Abandoned",
-				_ => "                  "
-			};
-			Console.SetCursorPosition(8, _topRow + STATUS_ROW);
-			Console.Write(new string(' ', CLEAR_WIDTH));
-			Console.SetCursorPosition(8, _topRow + STATUS_ROW);
-			AnsiConsole.Markup($"[yellow]{message}[/]{markupMessage}");
+		Console.SetCursorPosition(3, _topRow);
+		Console.Write($" T H E   G A M E   O F   B A T T L E S H I P ");
+	}
+
+	private void DisplayGrid(Player player, Game game, int offsetCol = 4)
+	{
+		const string SEA_COLOUR = "blue on black";
+		const char SEA = '.';
+		int boardSize = game.BoardSize;
+		int offsetRow = _topRow + BOARD_ROW;
+
+		Console.SetCursorPosition(offsetCol, offsetRow);
+		AnsiConsole.Markup($"     [green]{player?.Name}[/]");
+
+		Console.SetCursorPosition(offsetCol, offsetRow + 1);
+		Console.Write("     1 2 3 4 5 6 7 8 9 10");
+		Console.SetCursorPosition(offsetCol, offsetRow + 2);
+		Console.Write("   ┌─────────────────────┐");
+		for (int row = 0; row < boardSize; row++) {
+			Console.SetCursorPosition(offsetCol, offsetRow + 3 + row);
+			Console.Write($"{Convert.ToChar(row + 'A'),2} │ ");
+			string sea = string.Join(" ", Enumerable.Repeat($"{SEA}", boardSize));
+			AnsiConsole.Markup($"[{SEA_COLOUR}]{sea}[/]");
+			Console.Write(" │");
 		}
+		Console.SetCursorPosition(offsetCol, offsetRow + 13);
+		Console.Write("   └─────────────────────┘");
+	}
 
-		void PlaceShips()
+	private void DisplayStatus(GameStatus status, string markupMessage = "")
+	{
+		string message = status switch
 		{
-			myFleet = game.Fleet(player).ToDictionary(ship => ship.Type);
+			GameStatus.PlacingShips => "Place your ships  ",
+			GameStatus.AddingPlayers => "Adding players    ",
+			GameStatus.Attacking => "Attack those ships",
+			GameStatus.GameOver => "GAME OVER         ",
+			GameStatus.Abandoned => "Abandoned",
+			_ => "                  "
+		};
+		Console.SetCursorPosition(8, _topRow + STATUS_ROW);
+		Console.Write(new string(' ', CLEAR_WIDTH));
+		Console.SetCursorPosition(8, _topRow + STATUS_ROW);
+		AnsiConsole.Markup($"[yellow]{message}[/]{markupMessage}");
+	}
 
-			DisplayShipsOnGrid(myFleet.Values);
+	private void DisplayFinalSummary(Game game)
+	{
+		Console.SetCursorPosition(0, _topRow + GAME_HEIGHT - 2);
+		Console.WriteLine();
+		Console.WriteLine();
+		Console.WriteLine($" Results");
+		AnsiConsole.MarkupLineInterpolated($"  [bold]Pos Score  Player Name    [/]");
+		List<RankedPlayer> leaderboard = game.LeaderBoard().ToList();
+		foreach (RankedPlayer playerWithScore in leaderboard) {
+			AnsiConsole.MarkupLineInterpolated($"   [{(playerWithScore.Position == 1 ? "gold1 on black" : "on black")}]{playerWithScore.Position}   {playerWithScore.Score,3}   {playerWithScore.Player.Name,-20}[/]");
+		}
+	}
 
-			List<Ship> fleet = game.Fleet(player).Where(ship => ship.IsPositioned == false).ToList();
+	private void DisplayShotsOnGrid(Player player, int offsetCol = 4)
+	{
+		const string HIT_COLOUR = "red on black";
+		const string SUNK_COLOUR = $"red on black";
+		const string MISS_COLOUR = "blue on black";
+		const string MISS = $"[{MISS_COLOUR}]O[/]";
 
-			foreach (Ship ship in fleet) {
-				Ship newShip;
-				do {
-					DisplayShipsOnGrid(myFleet.Values);
-					DisplayStatus(GameStatus.PlacingShips, $" [green]{ship.Type.ToFriendlyString()}[/] ({ship.NoOfSegments} segments) ");
-					(Orientation Orientation, Coordinate Coordinate)? result = GetShipPlacementFromUser(_topRow + INPUT_ROW);
+		int offsetRow = _topRow + BOARD_ROW;
+		IEnumerable<AttackResult> shots = _attackResults.Where(s => s.TargetedPlayer?.Id == player.Id);
 
-					if (!result.HasValue) {
-						return;
-					}
-					newShip = new(ship.Type, result.Value.Coordinate, result.Value.Orientation);
-
-				} while (!game.PlaceShip(player, newShip));
-				myFleet[newShip.Type] = newShip;
+		foreach (AttackResult shot in shots) {
+			Console.SetCursorPosition(offsetCol + 3 + (shot.AttackCoordinate.Col * 2), offsetRow + 2 + shot.AttackCoordinate.Row);
+			bool sunk = shots.Any(s => s.ShipType == shot.ShipType && s.HitOrMiss == AttackResultType.HitAndSunk);
+			if (shot.HitOrMiss is AttackResultType.Miss or AttackResultType.Hit or AttackResultType.HitAndSunk) {
+				string hitormiss = shot.HitOrMiss switch
+				{
+					AttackResultType.Miss => MISS,
+					AttackResultType.Hit => sunk ? $"[{SUNK_COLOUR}]{GetShipShape(shot.ShipType).ToUpper()}[/]" : $"[{HIT_COLOUR}]{GetShipShape(shot.ShipType)}[/]",
+					AttackResultType.HitAndSunk => $"[{SUNK_COLOUR}]{GetShipShape(shot.ShipType).ToUpper()}[/]",
+					AttackResultType.AlreadyAttacked => throw new ArgumentOutOfRangeException(nameof(shot.HitOrMiss)),
+					AttackResultType.InvalidPosition => throw new ArgumentOutOfRangeException(nameof(shot.HitOrMiss)),
+					_ => throw new ArgumentOutOfRangeException(nameof(shot.HitOrMiss)),
+				};
+				AnsiConsole.Markup(hitormiss);
 			}
 		}
 	}
 
-	private int PrepareGameSpace()
+	private void DisplayShipsOnGrid(IEnumerable<Ship>? ships, int offsetCol = 4)
+	{
+		const string HIT_COLOUR = "red";
+		const string HIT = $"[{HIT_COLOUR}]x[/]";
+		const string MISS_COLOUR = "blue";
+		const string MISS = $"[{MISS_COLOUR}]O[/]";
+
+		int offsetRow = _topRow + BOARD_ROW;
+
+		// Display ships on the board
+		if (ships is not null) {
+			foreach (Ship ship in ships) {
+				foreach (ShipSegment segment in ship.Segments.Values) {
+					Console.SetCursorPosition(offsetCol + 3 + (segment.Coordinate.Col * 2), offsetRow + 2 + segment.Coordinate.Row);
+					string hitormiss = segment.IsHit
+						? $"[{HIT_COLOUR}]{GetShipShape(ship.Type)}[/]"
+						: GetShipShape(ship.Type);
+					hitormiss = ship.IsSunk ? hitormiss.ToUpper() : hitormiss;
+					AnsiConsole.Markup(hitormiss);
+				}
+			}
+		}
+	}
+
+	private async  Task PrepareNetwork(string uri)
+	{
+		hubConnection = new HubConnectionBuilder().WithUrl($"{uri}/bsm").Build();
+
+		await hubConnection.StartAsync();
+	}
+
+	private async Task<PrivatePlayer> RegisterPlayer(string playerName)
+	{
+		PrivatePlayer privatePlayer;
+		try {
+			privatePlayer = await hubConnection.InvokeAsync<PrivatePlayer>("RegisterPlayer", playerName);
+		}
+		catch (Exception ex) {
+			Console.WriteLine($"Error: {ex.Message}");
+			throw;
+		}
+
+		Console.WriteLine($"Player returned: {player}");
+		return privatePlayer;
+	}
+
+	private async Task<Player> FindOpponent(bool isComputer = true)
+	{
+		Player player;
+		try {
+			player = await hubConnection.InvokeAsync<Player>("FindOpponent", isComputer);
+		}
+		catch (Exception ex) {
+			Console.WriteLine($"Error: {ex.Message}");
+			throw;
+		}
+
+		Console.WriteLine($"Opponent returned: {player}");
+		return player;
+	}
+
+	private static int PrepareGameSpace()
 	{
 		for (int i = 0; i < GAME_HEIGHT; i++) {
 			Console.WriteLine();

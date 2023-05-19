@@ -2,7 +2,7 @@
 
 public record Player(string Name, bool IsComputer = false)
 {
-	public PlayerId Id { get; internal init; } = Guid.NewGuid();
+	public Guid Id { get; internal init; } = Guid.NewGuid();
 
 	public static Player PublicPlayer(Player player)
 	{
@@ -16,7 +16,7 @@ public record Player(string Name, bool IsComputer = false)
 
 public record PrivatePlayer(string Name, bool IsComputer = false) : Player(Name, IsComputer)
 {
-	public PlayerId PrivateId { get; internal init; } = Guid.NewGuid();
+	public Guid PrivateId { get; init; } = Guid.NewGuid();
 
 	public bool IsUserWhoTheySayTheyAre(Player player) => player switch
 	{

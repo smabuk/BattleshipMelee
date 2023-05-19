@@ -10,4 +10,4 @@ app.Configure(config => {
 		.WithExample(new[] { "battleship", "-u name" });
 });
 
-return app.Run(args);
+return await app.RunAsync(args);

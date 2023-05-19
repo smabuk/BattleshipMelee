@@ -8,9 +8,16 @@ internal sealed class BattleshipCommand : Command<BattleshipCommand.Settings> {
 			GameType            = settings.GameType,
 			PlayerName          = settings.PlayerName,
 			RandomShipPlacement = settings.RandomShipPlacement,
+			NetworkPlay         = settings.NetworkPlay,
+			Uri                 = $"https://{settings.Host}:{settings.Port}",
 		};
 
-		battleshipGame.Play();
+		if (settings.NetworkPlay) {
+			battleshipGame.PlayNetworkGame().Wait();
+		} else {
+			battleshipGame.Play();
+		}
+
 		return 0;
 	}
 
@@ -38,6 +45,20 @@ internal sealed class BattleshipCommand : Command<BattleshipCommand.Settings> {
 		public string PlayerName { get; init; } = "Human";
 
 
+		[Description("Network")]
+		[CommandOption("-n|--network")]
+		[DefaultValue(false)]
+		public bool NetworkPlay { get; init; } = false;
+
+		[Description("Network host")]
+		[CommandOption("--host")]
+		public string? Host { get; init; }
+
+		[Description("Network port")]
+		[CommandOption("--port")]
+		public int? Port { get; init; }
+
+
 		public override ValidationResult Validate()
 		{
 			string[] validTypes = {
@@ -48,6 +69,10 @@ internal sealed class BattleshipCommand : Command<BattleshipCommand.Settings> {
 
 			if (!validTypes.Contains(Type.ToLower())) {
 				return ValidationResult.Error("Type must be one of classic, melee, or bigbang");
+			}
+
+			if (NetworkPlay && (Host is null || Port is null)) {
+				return ValidationResult.Error("When connecting over the network you must specify the host and the port");
 			}
 
 			return base.Validate();
