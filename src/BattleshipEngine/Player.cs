@@ -1,6 +1,6 @@
 ﻿namespace BattleshipEngine;
 
-public record Player(string Name, bool IsComputer = false)
+public abstract record Player(string Name)
 {
 	public Guid Id { get; internal init; } = Guid.NewGuid();
 
@@ -8,13 +8,16 @@ public record Player(string Name, bool IsComputer = false)
 	{
 		return player switch
 		{
-			PrivatePlayer p => new(p.Name, p.IsComputer) { Id = p.Id },
+			PrivatePlayer p => p with { PrivateId = default },
+			ComputerPlayer => player,
 			_ => player,
 		};
 	}
 }
 
-public record PrivatePlayer(string Name, bool IsComputer = false) : Player(Name, IsComputer)
+public record ComputerPlayer(string Name) : Player(Name);
+
+public record PrivatePlayer(string Name) : Player(Name)
 {
 	public Guid PrivateId { get; init; } = Guid.NewGuid();
 

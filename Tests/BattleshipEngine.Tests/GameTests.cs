@@ -16,11 +16,11 @@ public class GameTests
 	{
 		Game game = new(GameType.Classic);
 
-		PrivatePlayer privatePlayer1 = game.AddPlayer("Test player");
-		PrivatePlayer privatePlayer2 = game.AddPlayer("Computer", isComputer: true);
-		Assert.Equal("Computer", privatePlayer2.Name);
-		Assert.True(privatePlayer2.IsComputer);
-		Assert.NotEqual(privatePlayer1, privatePlayer2);
+		Player privatePlayer1 = (PrivatePlayer)game.AddPlayer("Test player");
+		Player computerPlayer2 = (ComputerPlayer)game.AddPlayer("Computer", isComputer: true);
+		Assert.Equal("Computer", computerPlayer2.Name);
+		Assert.True(computerPlayer2 is ComputerPlayer);
+		Assert.NotEqual(privatePlayer1, computerPlayer2);
 
 		Assert.False(game.AreFleetsReady);
 
@@ -29,11 +29,11 @@ public class GameTests
 		Assert.True(game.AreFleetsReady);
 
 		AttackResult attackResult;
-		attackResult = game.Fire(privatePlayer2, "A1");
+		attackResult = game.Fire(computerPlayer2, "A1");
 		Assert.Equal(AttackResultType.Hit, attackResult.HitOrMiss);
-		attackResult = game.Fire(privatePlayer2, "A1");
+		attackResult = game.Fire(computerPlayer2, "A1");
 		Assert.Equal(AttackResultType.AlreadyAttacked, attackResult.HitOrMiss);
-		attackResult = game.Fire(privatePlayer2, "J6");
+		attackResult = game.Fire(computerPlayer2, "J6");
 		Assert.Equal(AttackResultType.Miss, attackResult.HitOrMiss);
 
 		Assert.False(game.GameOver);
@@ -47,13 +47,13 @@ public class GameTests
 		};
 
 		foreach (string pos in attackList) {
-			attackResult = game.Fire(privatePlayer2, pos);
+			attackResult = game.Fire(computerPlayer2, pos);
 		}
 
 		Assert.True(game.GameOver);
 
 		List<RankedPlayer> leaderboard = game.LeaderBoard().ToList();
-		Assert.Equal(1, leaderboard.Single(s => s.Player.Id == privatePlayer2.Id).Position);
+		Assert.Equal(1, leaderboard.Single(s => s.Player.Id == computerPlayer2.Id).Position);
 		Assert.Equal(2, leaderboard.Single(s => s.Player.Id == privatePlayer1.Id).Position);
 	}
 
@@ -62,18 +62,18 @@ public class GameTests
 	{
 		Game game = new(GameType.Classic);
 
-		PrivatePlayer privatePlayer1 = game.AddPlayer("Test player");
+		PrivatePlayer privatePlayer1 = (PrivatePlayer)game.AddPlayer("Test player");
 		Assert.True(game.PlaceShips(privatePlayer1, shipList));
 
 		List<Ship> ships = game.Fleet(privatePlayer1);
 
 		Assert.Equal(5, ships.Count);
 
-		Coordinate cruiserPosition    = ships.Single(ship => ship.Type == ShipType.Cruiser).Position;
-		Coordinate battleshipPosition = ships.Single(ship => ship.Type == ShipType.Battleship).Position;
-		Coordinate submarinePosition  = ships.Single(ship => ship.Type == ShipType.Submarine).Position;
-		Coordinate destroyerPosition  = ships.Single(ship => ship.Type == ShipType.Destroyer).Position;
-		Coordinate carrierPosition    = ships.Single(ship => ship.Type == ShipType.AircraftCarrier).Position;
+		Coordinate cruiserPosition    = ships.Single(ship => ship.Type == ShipType.Cruiser)?.Position ?? default!;
+		Coordinate battleshipPosition = ships.Single(ship => ship.Type == ShipType.Battleship)?.Position ?? default!;
+		Coordinate submarinePosition  = ships.Single(ship => ship.Type == ShipType.Submarine)?.Position ?? default!;
+		Coordinate destroyerPosition  = ships.Single(ship => ship.Type == ShipType.Destroyer)?.Position ?? default!;
+		Coordinate carrierPosition    = ships.Single(ship => ship.Type == ShipType.AircraftCarrier)?.Position ?? default!;
 
 		Assert.True(
 			cruiserPosition       == "A1" 
@@ -92,7 +92,7 @@ public class GameTests
 	{
 		Game game = new(GameType.Classic);
 
-		PrivatePlayer privatePlayer1 = game.AddPlayer("Test player");
+		PrivatePlayer privatePlayer1 = (PrivatePlayer)game.AddPlayer("Test player");
 		bool actual;
 		if (withShips) {
 			actual = game.PlaceShips(privatePlayer1, shipList, doItForMe: true);
@@ -105,11 +105,11 @@ public class GameTests
 
 		Assert.Equal(5, ships.Count);
 
-		Coordinate cruiserPosition    = ships.Single(ship => ship.Type == ShipType.Cruiser).Position;
-		Coordinate battleshipPosition = ships.Single(ship => ship.Type == ShipType.Battleship).Position;
-		Coordinate submarinePosition  = ships.Single(ship => ship.Type == ShipType.Submarine).Position;
-		Coordinate destroyerPosition  = ships.Single(ship => ship.Type == ShipType.Destroyer).Position;
-		Coordinate carrierPosition    = ships.Single(ship => ship.Type == ShipType.AircraftCarrier).Position;
+		Coordinate cruiserPosition    = ships.Single(ship => ship.Type == ShipType.Cruiser)?.Position ?? default!;
+		Coordinate battleshipPosition = ships.Single(ship => ship.Type == ShipType.Battleship)?.Position ?? default!;
+		Coordinate submarinePosition  = ships.Single(ship => ship.Type == ShipType.Submarine)?.Position ?? default!;
+		Coordinate destroyerPosition  = ships.Single(ship => ship.Type == ShipType.Destroyer)?.Position ?? default!;
+		Coordinate carrierPosition    = ships.Single(ship => ship.Type == ShipType.AircraftCarrier)?.Position ?? default!;
 
 		Assert.False(
 			cruiserPosition       == "A1" 

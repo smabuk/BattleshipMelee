@@ -27,8 +27,8 @@ internal class BattleshipGame
 	private readonly List<AttackResult> _attackResults = new();
 	private Dictionary<ShipType, Ship> myFleet = new();
 
-	private PrivatePlayer player = new("Me");
-	private Player opponent = new("Computer", IsComputer: true);
+	private Player player = new PrivatePlayer("Me");
+	private Player opponent = new ComputerPlayer("Computer");
 
 	internal void Play()
 	{
@@ -37,7 +37,7 @@ internal class BattleshipGame
 		GameStatus gameStatus = GameStatus.AddingPlayers;
 
 		player = game.AddPlayer(PlayerName);
-		opponent = Player.PublicPlayer(game.AddPlayer("Computer", isComputer: true));
+		opponent = game.AddPlayer("Computer", isComputer: true);
 
 		_topRow = PrepareGameSpace();
 
@@ -93,6 +93,7 @@ internal class BattleshipGame
 		gameStatus = GameStatus.PlacingShips;
 		DisplayStatus(gameStatus);
 
+		// Start game on network server
 		Game game = new Game(GameType);
 
 		if (RandomShipPlacement) {
@@ -152,7 +153,7 @@ internal class BattleshipGame
 		}
 	}
 
-	private void DisplayBoards(PrivatePlayer player, Player opponent, IEnumerable<Ship> myFleetOfShips, Game game)
+	private void DisplayBoards(Player player, Player opponent, IEnumerable<Ship> myFleetOfShips, Game game)
 	{
 		DisplayGrid(opponent, game);
 		DisplayShotsOnGrid(opponent);
@@ -311,7 +312,7 @@ internal class BattleshipGame
 	{
 		Player player;
 		try {
-			player = await hubConnection.InvokeAsync<Player>("FindOpponent", isComputer);
+			player = await hubConnection.InvokeAsync<ComputerPlayer>("FindComputerOpponent");
 		}
 		catch (Exception ex) {
 			Console.WriteLine($"Error: {ex.Message}");

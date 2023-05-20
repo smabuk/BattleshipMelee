@@ -21,7 +21,7 @@ internal class GameHub : Hub
 
 	public PrivatePlayer RegisterPlayer(string name)
 	{
-		return _gameService.AddPlayer(Context.ConnectionId, name);
+		return (PrivatePlayer)_gameService.AddPlayer(Context.ConnectionId, name);
 	}
 
 	public void UnRegisterPlayer(PrivatePlayer privatePlayer)
@@ -29,9 +29,9 @@ internal class GameHub : Hub
 		_gameService.RemovePlayer(Context.ConnectionId, privatePlayer.Name);
 	}
 
-	public Player FindOpponent(bool isComputer)
+	public ComputerPlayer FindComputerOpponent()
 	{
-		Player opponent = Player.PublicPlayer(_gameService.AddPlayer("Computer", "Computer", isComputer: true));
+		ComputerPlayer opponent = (ComputerPlayer)_gameService.AddPlayer("Computer", "Computer", isComputer: true);
 
 		return opponent;
 	}

@@ -2,25 +2,27 @@
 
 public class GameService
 {
-	public Dictionary<string, PrivatePlayer> Clients = new();
+	public ConcurrentDictionary<GameId, Game> Games = new();
+	public ConcurrentDictionary<ConnectionId, Player> Clients = new();
+	public ConcurrentDictionary<ConnectionId, PlayerStatus> PlayerStatus = new();
 
-	public PrivatePlayer AddPlayer(string connectionId, string name, bool isComputer = false)
+	public Player AddPlayer(ConnectionId connectionId, string name, bool isComputer = false)
 	{
 		if (Clients.ContainsKey(connectionId)) {
 			return Clients[connectionId];
 		}
 
-		PrivatePlayer player = isComputer switch { 
-			true => new PrivatePlayer("Computer", true),
+		Player player = isComputer switch { 
+			true => new ComputerPlayer("Computer"),
 			false => new PrivatePlayer(name),
 		};
 
-		Clients.Add(connectionId, player);
+		Clients.TryAdd(connectionId, player);
 		return player;
 	}
 
-	public bool RemovePlayer(string connectionId, string name, bool isComputer = false)
+	public bool RemovePlayer(ConnectionId connectionId, string playerName)
 	{
-		return Clients.Remove(connectionId);
+		return Clients.TryRemove(connectionId, out _);
 	}
 }

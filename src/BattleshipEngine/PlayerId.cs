@@ -1,13 +1,12 @@
 ﻿namespace BattleshipEngine;
 
 [Serializable]
-public readonly record struct PlayerId()
+public record PlayerId()
 {
-	private Guid Id { get;  init; }
+	private Guid Id { get;  init; } = Guid.NewGuid();
 
-	public override readonly string ToString() => Id.ToString();
+	public override string ToString() => Id.ToString();
 
 	public static implicit operator PlayerId(Guid guid) => new() { Id = guid } ;
 	public static implicit operator string(PlayerId id) => id.ToString();
-
 }

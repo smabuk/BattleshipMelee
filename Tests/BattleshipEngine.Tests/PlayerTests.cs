@@ -3,12 +3,11 @@
 public class PlayerTests
 {
 	readonly PrivatePlayer privatePlayer;
-	readonly Game game = new(GameType.Classic);
+	private Game _game = new(GameType.Classic);
 
 	public PlayerTests()
 	{
-		privatePlayer = game.AddPlayer("Test player");
-
+		privatePlayer = (PrivatePlayer)_game.AddPlayer("Test player");
 	}
 
 	[Fact]
@@ -20,9 +19,9 @@ public class PlayerTests
 	[Fact]
 	public void UserIsNotWhoTheySayTheyAre()
 	{
-		Game game = new(GameType.Classic);
+		_game = new(GameType.Classic);
 
-		PrivatePlayer player1 = new PrivatePlayer(privatePlayer.Name, privatePlayer.IsComputer);
+		PrivatePlayer player1 = new PrivatePlayer(privatePlayer.Name);
 		Assert.False(privatePlayer.IsUserWhoTheySayTheyAre(player1));
 
 		PrivatePlayer player2 = privatePlayer with { PrivateId = Guid.NewGuid() };

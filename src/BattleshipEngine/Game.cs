@@ -2,32 +2,36 @@
 
 public record Game(GameType GameType = GameType.Classic)
 {
-	private readonly Dictionary<PlayerId, PrivatePlayer> players = new();
-	private readonly Dictionary<PlayerId, Board> boards = new();
-	private readonly Dictionary<PlayerId, List<AttackResult>> shots = new();
+	private readonly Dictionary<PlayerId, Player> _players = new();
+	private readonly Dictionary<PlayerId, Board> _boards = new();
+	private readonly Dictionary<PlayerId, List<AttackResult>> _shots = new();
 
 	public void Init()
 	{
-		foreach (Player player in players.Values) {
-			shots[player.Id] = new();
+		foreach (Player player in _players.Values) {
+			_shots[player.Id] = new();
 		}
 	}
 
-	public bool AreFleetsReady => boards.Values.All(board => board.IsFleetReady);
+	public bool AreFleetsReady => _boards.Values.All(board => board.IsFleetReady);
 	public int BoardSize => GetBoardSize(GameType);
-	public bool GameOver => boards.Values.Any(board => board.IsFleetSunk);
-	public List<Ship> Fleet(Player player) => boards[player.Id].Fleet.ToList();
+	public bool GameOver => _boards.Values.Any(board => board.IsFleetSunk);
+	public List<Ship> Fleet(Player player) => _boards[player.Id].Fleet.ToList();
 	public string OpponentName(Player player) => Opponent(player).Name;
-	private Player Opponent(Player player) => Player.PublicPlayer(players.Values.Single(p => p.Id != player.Id));
+	private Player Opponent(Player player) => Player.PublicPlayer(_players.Values.Single(p => p.Id != player.Id));
 
-	public PrivatePlayer AddPlayer(string name, bool isComputer = false)
+	public Player AddPlayer(string name, bool isComputer = false)
 	{
-		PrivatePlayer privatePlayer = new(name.Trim(), isComputer);
+		Player privatePlayer = isComputer switch
+		{
+			false => new PrivatePlayer(name.Trim()),
+			true => new ComputerPlayer(name.Trim()),
+		};
 
-		players.Add(privatePlayer.Id, privatePlayer);
-		boards.Add(privatePlayer.Id, new(BoardSize) { Fleet = GameShips(GameType) });
+		_players.Add(privatePlayer.Id, privatePlayer);
+		_boards.Add(privatePlayer.Id, new(BoardSize) { Fleet = GameShips(GameType) });
 
-		shots[privatePlayer.Id] = new();
+		_shots[privatePlayer.Id] = new();
 
 		if (isComputer) {
 			PlaceShips(privatePlayer, doItForMe: true);
@@ -36,29 +40,29 @@ public record Game(GameType GameType = GameType.Classic)
 		return privatePlayer;
 	}
 
-	public AttackResult Fire(PrivatePlayer privatePlayer, Coordinate attackCoordinate)
+	public AttackResult Fire(Player player, Coordinate attackCoordinate)
 	{
-		Player playerToAttack = Opponent(privatePlayer);
+		Player playerToAttack = Opponent(player);
 
-		if (shots[privatePlayer.Id].Any(s => s.AttackCoordinate == attackCoordinate)) {
+		if (_shots[player.Id].Any(s => s.AttackCoordinate == attackCoordinate)) {
 			return new(attackCoordinate, AttackResultType.AlreadyAttacked) { TargetedPlayer = playerToAttack };
 		} else {
-			AttackResult result = boards[playerToAttack.Id].Attack(attackCoordinate) with { TargetedPlayer = playerToAttack };
-			shots[privatePlayer.Id].Add(result);
+			AttackResult result = _boards[playerToAttack.Id].Attack(attackCoordinate) with { TargetedPlayer = playerToAttack };
+			_shots[player.Id].Add(result);
 			return result;
 		}
 	}
 
-	public IEnumerable<AttackResult> FireSalvo(PrivatePlayer privatePlayer, IEnumerable<Coordinate> attackCoordinates)
+	public IEnumerable<AttackResult> FireSalvo(Player privatePlayer, IEnumerable<Coordinate> attackCoordinates)
 	{
 		Player playerToAttack = Opponent(privatePlayer);
 
 		foreach (Coordinate attackCoordinate in attackCoordinates) {
-			if (shots[privatePlayer.Id].Any(s => s.AttackCoordinate == attackCoordinate)) {
+			if (_shots[privatePlayer.Id].Any(s => s.AttackCoordinate == attackCoordinate)) {
 				yield return new(attackCoordinate, AttackResultType.AlreadyAttacked) { TargetedPlayer = playerToAttack };
 			} else {
-				AttackResult result = boards[playerToAttack.Id].Attack(attackCoordinate) with { TargetedPlayer = playerToAttack };
-				shots[privatePlayer.Id].Add(result);
+				AttackResult result = _boards[playerToAttack.Id].Attack(attackCoordinate) with { TargetedPlayer = playerToAttack };
+				_shots[privatePlayer.Id].Add(result);
 				yield return result;
 			}
 		}
@@ -66,17 +70,17 @@ public record Game(GameType GameType = GameType.Classic)
 
 	public IEnumerable<AttackResult> OtherPlayersFire()
 	{
-		foreach (PrivatePlayer privatePlayer in players.Values.Where(p => p.IsComputer)) {
-			Player playerToAttack = Opponent(privatePlayer);
+		foreach (ComputerPlayer computerPlayer in _players.Values.Where(p => p is ComputerPlayer)) {
+			Player playerToAttack = Opponent(computerPlayer);
 
-			HashSet<Coordinate> alreadyAttacked = shots[privatePlayer.Id].Select(s => s.AttackCoordinate).ToHashSet();
+			HashSet<Coordinate> alreadyAttacked = _shots[computerPlayer.Id].Select(s => s.AttackCoordinate).ToHashSet();
 			Coordinate attackCoordinate = new(Random.Shared.Next(1, 11), Random.Shared.Next(1, 11));
 			while (alreadyAttacked.Contains(attackCoordinate)) {
 				attackCoordinate = new(Random.Shared.Next(1, 11), Random.Shared.Next(1, 11));
 			}
 
-			AttackResult result = boards[playerToAttack.Id].Attack(attackCoordinate) with { TargetedPlayer = playerToAttack };
-			shots[privatePlayer.Id].Add(result);
+			AttackResult result = _boards[playerToAttack.Id].Attack(attackCoordinate) with { TargetedPlayer = playerToAttack };
+			_shots[computerPlayer.Id].Add(result);
 			yield return result;
 		}
 
@@ -86,10 +90,10 @@ public record Game(GameType GameType = GameType.Classic)
 	{
 		List<RankedPlayer> leaderboard = new();
 
-		foreach (Player privatePlayer in players.Values) {
+		foreach (Player privatePlayer in _players.Values) {
 			Player player = Player.PublicPlayer(privatePlayer);
 			int score = 0;
-			foreach (AttackResult shot in shots[player.Id]) {
+			foreach (AttackResult shot in _shots[player.Id]) {
 				score += shot.HitOrMiss switch
 				{
 					AttackResultType.Hit => 2,
@@ -100,8 +104,8 @@ public record Game(GameType GameType = GameType.Classic)
 					_ => 0,
 				};
 			}
-			score += boards[player.Id].IsFleetSunk ? -100 : 0;
-			score += boards[Opponent(player).Id].IsFleetSunk ? 100 : 0;
+			score += _boards[player.Id].IsFleetSunk ? -100 : 0;
+			score += _boards[Opponent(player).Id].IsFleetSunk ? 100 : 0;
 			RankedPlayer leaderboardPosition = new(player, Score: score);
 			leaderboard.Add(leaderboardPosition);
 		}
@@ -117,14 +121,14 @@ public record Game(GameType GameType = GameType.Classic)
 		}
 	}
 
-	public bool PlaceShips(PrivatePlayer privatePlayer, List<Ship>? shipsToPlace = null, bool doItForMe = false)
+	public bool PlaceShips(Player privatePlayer, List<Ship>? shipsToPlace = null, bool doItForMe = false)
 	{
-		bool validUser = IsUserWhoTheySayTheyAre(privatePlayer);
-		if (validUser is false) {
-			return false;
-		}
+		//bool validUser = IsUserWhoTheySayTheyAre(privatePlayer);
+		//if (validUser is false) {
+		//	return false;
+		//}
 
-		Board board = boards[privatePlayer.Id];
+		Board board = _boards[privatePlayer.Id];
 
 		int row, col;
 		Coordinate position;
@@ -161,19 +165,19 @@ public record Game(GameType GameType = GameType.Classic)
 		return board.IsFleetReady;
 	}
 
-	public bool PlaceShip(PrivatePlayer privatePlayer, Ship shipToPlace)
+	public bool PlaceShip(Player privatePlayer, Ship shipToPlace)
 	{
 		bool validUser = IsUserWhoTheySayTheyAre(privatePlayer);
 		if (validUser is false) {
 			return false;
 		}
 
-		return boards[privatePlayer.Id].PlaceShip(shipToPlace);
+		return _boards[privatePlayer.Id].PlaceShip(shipToPlace);
 	}
 
-	private bool IsUserWhoTheySayTheyAre(PrivatePlayer privatePlayer)
+	private bool IsUserWhoTheySayTheyAre(Player privatePlayer)
 	{
-		PrivatePlayer storedPlayer = players[privatePlayer.Id];
+		PrivatePlayer storedPlayer = (PrivatePlayer)_players[privatePlayer.Id];
 		if (storedPlayer.IsUserWhoTheySayTheyAre(privatePlayer)) {
 			return true;
 		}
