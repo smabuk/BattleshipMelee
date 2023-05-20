@@ -14,10 +14,16 @@ public class GameTests
 	[Fact]
 	public void PlayGame()
 	{
-		Game game = new(GameType.Classic);
+		Player privatePlayer1 = new PrivatePlayer("Test player");
+		Player computerPlayer2 = new ComputerPlayer("Computer");
+		List<Player> players = new()
+		{
+			privatePlayer1,
+			computerPlayer2
+		};
 
-		Player privatePlayer1 = (PrivatePlayer)game.AddPlayer("Test player");
-		Player computerPlayer2 = (ComputerPlayer)game.AddPlayer("Computer", isComputer: true);
+		Game game = Game.StartNewGame(players, GameType.Classic);
+
 		Assert.Equal("Computer", computerPlayer2.Name);
 		Assert.True(computerPlayer2 is ComputerPlayer);
 		Assert.NotEqual(privatePlayer1, computerPlayer2);
@@ -60,9 +66,14 @@ public class GameTests
 	[Fact]
 	public void PlaceShipsIntoGame()
 	{
-		Game game = new(GameType.Classic);
+		Player privatePlayer1 = new PrivatePlayer("Test player");
+		Player computerPlayer2 = new ComputerPlayer("Computer");
+		List<Player> players = new()
+		{
+			privatePlayer1,
+		};
+		Game game = Game.StartNewGame(players, GameType.Classic);
 
-		PrivatePlayer privatePlayer1 = (PrivatePlayer)game.AddPlayer("Test player");
 		Assert.True(game.PlaceShips(privatePlayer1, shipList));
 
 		List<Ship> ships = game.Fleet(privatePlayer1);
@@ -90,9 +101,13 @@ public class GameTests
 	[InlineData(true)]
 	public void PlaceShipsRandomlyIntoGame(bool withShips)
 	{
-		Game game = new(GameType.Classic);
+		Player privatePlayer1 = new PrivatePlayer("Test player");
+		List<Player> players = new()
+		{
+			privatePlayer1,
+		};
+		Game game = Game.StartNewGame(players, GameType.Classic);
 
-		PrivatePlayer privatePlayer1 = (PrivatePlayer)game.AddPlayer("Test player");
 		bool actual;
 		if (withShips) {
 			actual = game.PlaceShips(privatePlayer1, shipList, doItForMe: true);

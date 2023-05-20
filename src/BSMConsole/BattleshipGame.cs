@@ -32,12 +32,15 @@ internal class BattleshipGame
 
 	internal void Play()
 	{
-		Game game = new Game(GameType);
-
 		GameStatus gameStatus = GameStatus.AddingPlayers;
 
-		player = game.AddPlayer(PlayerName);
-		opponent = game.AddPlayer("Computer", isComputer: true);
+		player = player with { Name = PlayerName };
+		List<Player> players = new()
+		{
+			player,
+			opponent
+		};
+		Game game = Game.StartNewGame(players, GameType);
 
 		_topRow = PrepareGameSpace();
 

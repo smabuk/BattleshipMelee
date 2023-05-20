@@ -36,4 +36,13 @@ internal class GameHub : Hub
 		return opponent;
 	}
 
+	public IEnumerable<Ship> PlaceMyShips(GameId gameId, Player player, IEnumerable<Ship>? ships = null, bool doItForMe = false)
+	{
+		//ComputerPlayer opponent = (ComputerPlayer)_gameService.AddPlayer("Computer", "Computer", isComputer: true);
+
+		return ships ?? new List<Ship>();
+	}
+
+
+
 }

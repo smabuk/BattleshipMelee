@@ -6,13 +6,6 @@ public record Game(GameType GameType = GameType.Classic)
 	private readonly Dictionary<PlayerId, Board> _boards = new();
 	private readonly Dictionary<PlayerId, List<AttackResult>> _shots = new();
 
-	public void Init()
-	{
-		foreach (Player player in _players.Values) {
-			_shots[player.Id] = new();
-		}
-	}
-
 	public bool AreFleetsReady => _boards.Values.All(board => board.IsFleetReady);
 	public int BoardSize => GetBoardSize(GameType);
 	public bool GameOver => _boards.Values.Any(board => board.IsFleetSunk);
@@ -20,7 +13,30 @@ public record Game(GameType GameType = GameType.Classic)
 	public string OpponentName(Player player) => Opponent(player).Name;
 	private Player Opponent(Player player) => Player.PublicPlayer(_players.Values.Single(p => p.Id != player.Id));
 
-	public Player AddPlayer(string name, bool isComputer = false)
+	public static Game StartNewGame(List<Player> players, GameType gameType = GameType.Classic)
+	{
+		Game game = new Game(gameType);
+		foreach (Player player in players) {
+			game.AddPlayer(player);
+		}
+		return game;
+	}
+
+	internal Player AddPlayer(Player player)
+	{
+		_players.Add(player.Id, player);
+		_boards.Add(player.Id, new(BoardSize) { Fleet = GameShips(GameType) });
+
+		_shots[player.Id] = new();
+
+		if (player is ComputerPlayer) {
+			PlaceShips(player, doItForMe: true);
+		}
+
+		return player;
+	}
+
+	internal Player AddPlayer(string name, bool isComputer = false)
 	{
 		Player privatePlayer = isComputer switch
 		{
