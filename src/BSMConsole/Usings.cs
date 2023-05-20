@@ -8,3 +8,5 @@ global using BSMConsole;
 
 global using Spectre.Console;
 global using Spectre.Console.Cli;
+
+global using PlayerId = string;

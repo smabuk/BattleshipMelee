@@ -4,3 +4,9 @@
 @host={{hostname}}:{{port}}
 
 GET https://{{host}}/players
+
+###
+
+GET https://{{host}}/games
+
+###

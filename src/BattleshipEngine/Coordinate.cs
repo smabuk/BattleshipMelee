@@ -1,4 +1,6 @@
-﻿namespace BattleshipEngine;
+﻿using System.Text.Json.Serialization;
+
+namespace BattleshipEngine;
 
 public record Coordinate(int Row, int Col) : IParsable<Coordinate>
 {
@@ -7,7 +9,8 @@ public record Coordinate(int Row, int Col) : IParsable<Coordinate>
 	const char MIN_LETTER = 'A';
 	const char MAX_LETTER = 'J';
 
-	public Coordinate(string coord) : this(Parse(coord).Row, Parse(coord).Col) { }
+	//[JsonConstructor]
+	//public Coordinate(string coord) : this(Parse(coord).Row, Parse(coord).Col) { }
 
 	public override string ToString() => IsValid ? $"{Convert.ToChar(Row - 1 + MIN_LETTER)}{Col}" : "";
 

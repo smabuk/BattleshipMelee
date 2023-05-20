@@ -2,13 +2,13 @@
 
 public abstract record Player(string Name)
 {
-	public Guid Id { get; internal init; } = Guid.NewGuid();
+	public PlayerId Id { get; set; } = Guid.NewGuid().ToString();
 
 	public static Player PublicPlayer(Player player)
 	{
 		return player switch
 		{
-			PrivatePlayer p => p with { PrivateId = default },
+			PrivatePlayer p => p with { PrivateId = "" },
 			ComputerPlayer => player,
 			_ => player,
 		};
@@ -19,7 +19,7 @@ public record ComputerPlayer(string Name) : Player(Name);
 
 public record PrivatePlayer(string Name) : Player(Name)
 {
-	public Guid PrivateId { get; init; } = Guid.NewGuid();
+	public PlayerId PrivateId { get; set; } = Guid.NewGuid().ToString();
 
 	public bool IsUserWhoTheySayTheyAre(Player player) => player switch
 	{

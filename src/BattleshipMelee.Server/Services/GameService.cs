@@ -2,7 +2,7 @@
 
 public class GameService
 {
-	private ConcurrentDictionary<GameId, Game> _games = new();
+	public ConcurrentDictionary<string, Game> Games = new();
 	public ConcurrentDictionary<ConnectionId, Player> Clients = new();
 	public ConcurrentDictionary<ConnectionId, PlayerStatus> PlayerStatus = new();
 
@@ -26,15 +26,25 @@ public class GameService
 		return Clients.TryRemove(connectionId, out _);
 	}
 
-	public GameId? StartGameWithComputer(PrivatePlayer player, string computerPlayerName, GameType gameType = GameType.Classic) {
+	public string? StartGameWithComputer(PrivatePlayer player, string computerPlayerName, GameType gameType = GameType.Classic) {
 		List<Player> players = new() {
 			player,
 			new ComputerPlayer(computerPlayerName),
 		};
 		Game game = Game.StartNewGame(players, gameType);
-		if (_games.TryAdd(game.GameId, game)) { 
+		if (Games.TryAdd(game.GameId, game)) {
 			return game.GameId;
 		};
 		return null;
 	}
+
+	public List<Ship> PlaceShips(PrivatePlayer player, string gameId, List<Ship>? ships, bool doItForMe = false) {
+		if (Games.ContainsKey(gameId)) {
+			Games[gameId].PlaceShips(player, ships, doItForMe);
+			return Games[gameId].Fleet(player);
+		}
+		return new();
+	}
+
+
 }

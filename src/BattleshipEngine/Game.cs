@@ -2,11 +2,11 @@
 
 public record Game(GameType GameType = GameType.Classic)
 {
-	private readonly Dictionary<PlayerId, Player> _players = new();
+	public readonly Dictionary<PlayerId, Player> _players = new();
 	private readonly Dictionary<PlayerId, Board> _boards = new();
 	private readonly Dictionary<PlayerId, List<AttackResult>> _shots = new();
 
-	public GameId GameId { get; private set; } = Guid.NewGuid();
+	public string GameId { get; private set; } = "";
 	public bool AreFleetsReady => _boards.Values.All(board => board.IsFleetReady);
 	public int BoardSize => GetBoardSize(GameType);
 	public bool GameOver => _boards.Values.Any(board => board.IsFleetSunk);
@@ -16,7 +16,9 @@ public record Game(GameType GameType = GameType.Classic)
 
 	public static Game StartNewGame(List<Player> players, GameType gameType = GameType.Classic)
 	{
-		Game game = new Game(gameType);
+		Game game = new Game(gameType) {
+			GameId = Guid.NewGuid().ToString(),
+		};
 		foreach (Player player in players) {
 			game.AddPlayer(player);
 		}

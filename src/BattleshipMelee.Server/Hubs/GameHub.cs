@@ -29,16 +29,14 @@ internal class GameHub : Hub
 		_gameService.RemovePlayer(Context.ConnectionId, privatePlayer.Name);
 	}
 
-	public GameId? StartGameVsComputer(PrivatePlayer player, string computerPlayerName = "Computer", GameType gameType = GameType.Classic)
+	public string? StartGameVsComputer(PrivatePlayer player, string computerPlayerName = "Computer", GameType gameType = GameType.Classic)
 	{
 		return _gameService.StartGameWithComputer(player, computerPlayerName, gameType);
 	}
 
-	public IEnumerable<Ship> PlaceMyShips(GameId gameId, Player player, IEnumerable<Ship>? ships = null, bool doItForMe = false)
+	public List<Ship> PlaceShips(PrivatePlayer player, string gameId, List<Ship>? ships = null, bool doItForMe = false)
 	{
-		//ComputerPlayer opponent = (ComputerPlayer)_gameService.AddPlayer("Computer", "Computer", isComputer: true);
-
-		return ships ?? new List<Ship>();
+		return _gameService.PlaceShips(player, gameId, ships, doItForMe);
 	}
 
 

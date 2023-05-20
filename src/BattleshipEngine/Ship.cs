@@ -1,22 +1,23 @@
-﻿namespace BattleshipEngine;
+﻿using System.Text.Json.Serialization;
 
-public record Ship(ShipType Type)
+namespace BattleshipEngine;
+
+public record Ship(ShipType Type, Coordinate Position = null! , Orientation Orientation = Orientation.Horizontal)
 {
-	public Dictionary<Coordinate, ShipSegment> Segments { get; private set; } = new();
+	// See https://stackoverflow.com/questions/24504245/not-ableto-serialize-dictionary-with-complex-key-using-json-net
+	[JsonIgnore]
+	public Dictionary<Coordinate, ShipSegment> Segments { get; private set; } = Position is null ? new() : Ship
+		.GetSegmentsWhenPlaced(Type, Position, Orientation)
+		.ToDictionary(x => x.Coordinate, x => x);
 
-	public Ship(ShipType Type, Coordinate Position, Orientation Orientation) : this(Type)
+	[JsonInclude]
+	public List<ShipSegment> SerializedSegments
 	{
-		this.Orientation = Orientation;
-		this.Position = Position;
-		foreach (ShipSegment segment in GetSegmentsWhenPlaced(Type, Position, Orientation)) {
-			Segments.Add(segment.Coordinate, segment);
-		}
+		get { return Segments.Values.ToList(); }
+		set { Segments = value.ToDictionary(x => x.Coordinate, x => x); }
 	}
 
-	public Orientation Orientation { get; }
-	public Coordinate? Position { get; }
-
-	public int  NoOfSegments => GetNoOfSegments(Type);
+	public int NoOfSegments => GetNoOfSegments(Type);
 	public bool IsPositioned => Segments.Any();
 	public bool IsAfloat => IsPositioned && Segments.Values.Any(s => s.IsHit is false);
 	public bool IsSunk => IsPositioned && Segments.Values.All(s => s.IsHit);
@@ -47,8 +48,8 @@ public record Ship(ShipType Type)
 		for (int i = 0; i < noOfSegments; i++) {
 			Coordinate coord = orientation switch
 			{
-				Orientation.Vertical   => new(position.Row + i, position.Col),
-				Orientation.Horizontal => new(position.Row,     position.Col + i),
+				Orientation.Vertical => new(position.Row + i, position.Col),
+				Orientation.Horizontal => new(position.Row, position.Col + i),
 				_ => throw new NotImplementedException(),
 			};
 			segments.Add(new(coord, false));

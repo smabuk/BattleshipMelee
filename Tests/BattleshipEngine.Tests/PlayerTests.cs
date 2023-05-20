@@ -27,7 +27,7 @@ public class PlayerTests
 		PrivatePlayer player1 = new PrivatePlayer(privatePlayer.Name);
 		Assert.False(privatePlayer.IsUserWhoTheySayTheyAre(player1));
 
-		PrivatePlayer player2 = privatePlayer with { PrivateId = Guid.NewGuid() };
+		PrivatePlayer player2 = privatePlayer with { PrivateId = Guid.NewGuid().ToString() };
 		Assert.False(privatePlayer.IsUserWhoTheySayTheyAre(player2));
 
 		Player player3 = Player.PublicPlayer(privatePlayer);

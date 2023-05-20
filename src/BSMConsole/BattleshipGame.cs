@@ -1,6 +1,7 @@
 ﻿using BattleshipEngine;
 
 namespace BSMConsole;
+
 internal class BattleshipGame
 {
 	public string PlayerName { get; set; } = "Me";
@@ -22,13 +23,13 @@ internal class BattleshipGame
 
 	private int _topRow = int.MinValue;
 
-	private HubConnection hubConnection = default!;
+	private HubConnection _hubConnection = default!;
 	
 	private readonly List<AttackResult> _attackResults = new();
 	private Dictionary<ShipType, Ship> myFleet = new();
 
-	private Player player = new PrivatePlayer("Me");
-	private Player opponent = new ComputerPlayer("Computer");
+	private PrivatePlayer player = new("Me");
+	private ComputerPlayer opponent = new ComputerPlayer("Computer");
 
 	internal void Play()
 	{
@@ -84,7 +85,7 @@ internal class BattleshipGame
 	internal async Task PlayNetworkGame()
 	{
 		Game game = new Game();
-		GameId gameId;
+		string gameId;
 		GameStatus gameStatus = GameStatus.AddingPlayers;
 
 		await PrepareNetwork(Uri);
@@ -99,11 +100,13 @@ internal class BattleshipGame
 		DisplayStatus(gameStatus);
 
 		// ToDo: By the end of this rewrite game should not exist locally
-		gameId = await PlayVsComputer((PrivatePlayer)player, gameType: GameType);
+		gameId = await PlayVsComputer(player, gameType: GameType);
 
 		if (RandomShipPlacement) {
-			game.PlaceShips(player, doItForMe: true);
-			myFleet = game.Fleet(player).ToDictionary(ship => ship.Type, ship => ship);
+			myFleet = (await 
+				_hubConnection
+				.InvokeAsync<List<Ship>>("PlaceShips", player, gameId, null, true))
+				.ToDictionary(ship => ship.Type, ship => ship);
 		} else {
 			DisplayEmptyGrid(player, game.BoardSize);
 			PlaceShips(game);
@@ -135,11 +138,11 @@ internal class BattleshipGame
 
 	private void PlaceShips(Game game)
 	{
-		myFleet = game.Fleet(player).ToDictionary(ship => ship.Type);
+		myFleet = Game.GameShips(GameType).ToDictionary(ship => ship.Type);
 
 		DisplayShipsOnGrid(myFleet.Values);
 
-		List<Ship> fleet = game.Fleet(player).Where(ship => ship.IsPositioned == false).ToList();
+		List<Ship> fleet = myFleet.Values.Where(ship => ship.IsPositioned == false).ToList();
 
 		foreach (Ship ship in fleet) {
 			Ship newShip;
@@ -293,16 +296,19 @@ internal class BattleshipGame
 
 	private async  Task PrepareNetwork(string uri)
 	{
-		hubConnection = new HubConnectionBuilder().WithUrl($"{uri}/bsm").Build();
+		_hubConnection = new HubConnectionBuilder()
+			.WithUrl($"{uri}/bsm")
+			.WithAutomaticReconnect()
+			.Build();
 
-		await hubConnection.StartAsync();
+		await _hubConnection.StartAsync();
 	}
 
 	private async Task<PrivatePlayer> RegisterPlayer(string playerName)
 	{
 		PrivatePlayer privatePlayer;
 		try {
-			privatePlayer = await hubConnection.InvokeAsync<PrivatePlayer>("RegisterPlayer", playerName);
+			privatePlayer = await _hubConnection.InvokeAsync<PrivatePlayer>("RegisterPlayer", playerName);
 		}
 		catch (Exception ex) {
 			Debug.WriteLine($"Error in {nameof(RegisterPlayer)}: {ex.Message}");
@@ -317,7 +323,7 @@ internal class BattleshipGame
 	{
 		Player player;
 		try {
-			player = await hubConnection.InvokeAsync<ComputerPlayer>("FindComputerOpponent");
+			player = await _hubConnection.InvokeAsync<ComputerPlayer>("FindComputerOpponent");
 		}
 		catch (Exception ex) {
 			Debug.WriteLine($"Error in {nameof(FindOpponent)}: {ex.Message}");
@@ -328,11 +334,11 @@ internal class BattleshipGame
 		return player;
 	}
 
-	private async Task<GameId> PlayVsComputer(PrivatePlayer player, string computerPlayerName = "Computer", GameType gameType = GameType.Classic)
+	private async Task<string> PlayVsComputer(PrivatePlayer player, string computerPlayerName = "Computer", GameType gameType = GameType.Classic)
 	{
-		GameId? gameId;
+		string? gameId;
 		try {
-			gameId = await hubConnection.InvokeAsync<GameId>("StartGameVsComputer", player, computerPlayerName, gameType);
+			gameId = await _hubConnection.InvokeAsync<string>("StartGameVsComputer", player, computerPlayerName, gameType);
 		}
 		catch (Exception ex) {
 			Debug.WriteLine($"Error in {nameof(PlayVsComputer)}: {ex.Message}");
@@ -368,7 +374,7 @@ internal class BattleshipGame
 					coordinate = new(0, 0);
 					return false;
 				case ConsoleKey.Enter when currentCoordinateString.Length > 1:
-					coordinate = new Coordinate(currentCoordinateString);
+					coordinate = currentCoordinateString;
 					return true;
 
 				case ConsoleKey.Backspace when currentCoordinateString.Length > 0:
@@ -401,7 +407,7 @@ internal class BattleshipGame
 				case ConsoleKey.Escape:
 					return null;
 				case ConsoleKey.Enter when currentCoordinateString.Length > 1: {
-						Coordinate coordinate = new Coordinate(currentCoordinateString);
+						Coordinate coordinate = currentCoordinateString;
 						return (orientation, coordinate);
 					}
 

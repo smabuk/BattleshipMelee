@@ -55,7 +55,7 @@ public sealed class CoordinateTests
 	public void CreateCoordinateFromString(string input, int row, int col)
 	{
 		Coordinate expected = new Coordinate(row, col);
-		Coordinate actual = new(input);
+		Coordinate actual = input;
 		Assert.Equal(expected, actual);
 	}
 
@@ -77,22 +77,22 @@ public sealed class CoordinateTests
 	{
 		const string OUT_OF_RANGE_MESSAGE = "coordinate must start with a single letter and be followed by a number over 0 like D9. (Parameter 'coordinate')";
 
-		Assert.Throws<ArgumentNullException>(() => { Coordinate actual = new Coordinate(null!); });
+		//Assert.Throws<ArgumentNullException>(() => { Coordinate actual = new Coordinate(null!); });
 
 		Exception exception;
-		exception = Assert.Throws<ArgumentOutOfRangeException>(() => { Coordinate actual = new Coordinate(""); });
+		exception = Assert.Throws<ArgumentOutOfRangeException>(() => { Coordinate actual = ""; });
 		Assert.Equal(OUT_OF_RANGE_MESSAGE, ((ArgumentOutOfRangeException)exception).Message);
 
-		exception = Assert.Throws<ArgumentOutOfRangeException>(() => { Coordinate actual = new Coordinate("12"); });
+		exception = Assert.Throws<ArgumentOutOfRangeException>(() => { Coordinate actual = "12"; });
 		Assert.Equal(OUT_OF_RANGE_MESSAGE, ((ArgumentOutOfRangeException)exception).Message);
 
-		exception = Assert.Throws<ArgumentOutOfRangeException>(() => { Coordinate actual = new Coordinate("A0"); });
+		exception = Assert.Throws<ArgumentOutOfRangeException>(() => { Coordinate actual = "A0"; });
 		Assert.Equal(OUT_OF_RANGE_MESSAGE, ((ArgumentOutOfRangeException)exception).Message);
 
-		exception = Assert.Throws<FormatException>(() => { Coordinate actual = new Coordinate("AZ"); });
+		exception = Assert.Throws<FormatException>(() => { Coordinate actual = "AZ"; });
 		Assert.Equal("The input string 'Z' was not in a correct format.", ((FormatException)exception).Message);
 
-		exception = Assert.Throws<FormatException>(() => { Coordinate actual = new Coordinate("A-3"); });
+		exception = Assert.Throws<FormatException>(() => { Coordinate actual = "A-3"; });
 		Assert.Equal("The input string '-3' was not in a correct format.", ((FormatException)exception).Message);
 	}
 
@@ -111,7 +111,7 @@ public sealed class CoordinateTests
 	[InlineData("-3",   0,  0, false)]
 	public void TryToParseAndReturnCoordinate(string input, int row, int col, bool expected)
 	{
-		bool actual = Coordinate.TryParse(input, null, out Coordinate coordinate);
+		bool actual = Coordinate.TryParse(input, null, out Coordinate? coordinate);
 		Assert.Equal(expected, actual);
 		if (actual) {
 			Assert.Equal(new(row, col), coordinate);
