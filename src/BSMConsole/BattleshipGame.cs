@@ -83,11 +83,13 @@ internal class BattleshipGame
 
 	internal async Task PlayNetworkGame()
 	{
+		Game game = new Game();
+		GameId gameId;
 		GameStatus gameStatus = GameStatus.AddingPlayers;
 
 		await PrepareNetwork(Uri);
 		player = await RegisterPlayer(PlayerName);
-		opponent = await FindOpponent(true);
+		//opponent = await FindOpponent(true);
 
 		_topRow = PrepareGameSpace();
 
@@ -97,8 +99,7 @@ internal class BattleshipGame
 		DisplayStatus(gameStatus);
 
 		// ToDo: By the end of this rewrite game should not exist locally
-		Game game = new Game(GameType);
-		// ToDo: Start game on network server
+		gameId = await PlayVsComputer((PrivatePlayer)player, gameType: GameType);
 
 		if (RandomShipPlacement) {
 			game.PlaceShips(player, doItForMe: true);
@@ -325,6 +326,25 @@ internal class BattleshipGame
 
 		Debug.WriteLine($"Opponent returned: {player}");
 		return player;
+	}
+
+	private async Task<GameId> PlayVsComputer(PrivatePlayer player, string computerPlayerName = "Computer", GameType gameType = GameType.Classic)
+	{
+		GameId? gameId;
+		try {
+			gameId = await hubConnection.InvokeAsync<GameId>("StartGameVsComputer", player, computerPlayerName, gameType);
+		}
+		catch (Exception ex) {
+			Debug.WriteLine($"Error in {nameof(PlayVsComputer)}: {ex.Message}");
+			throw;
+		}
+
+		if (gameId is null) {
+			throw new ApplicationException($"{nameof(PlayVsComputer)}: Couldn't start a game against the computer.");
+		}
+
+		Debug.WriteLine($"Game Id: {gameId}");
+		return gameId;
 	}
 
 	private static int PrepareGameSpace()

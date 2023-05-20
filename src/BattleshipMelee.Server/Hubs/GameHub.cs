@@ -29,11 +29,9 @@ internal class GameHub : Hub
 		_gameService.RemovePlayer(Context.ConnectionId, privatePlayer.Name);
 	}
 
-	public ComputerPlayer FindComputerOpponent()
+	public GameId? StartGameVsComputer(PrivatePlayer player, string computerPlayerName = "Computer", GameType gameType = GameType.Classic)
 	{
-		ComputerPlayer opponent = (ComputerPlayer)_gameService.AddPlayer("Computer", "Computer", isComputer: true);
-
-		return opponent;
+		return _gameService.StartGameWithComputer(player, computerPlayerName, gameType);
 	}
 
 	public IEnumerable<Ship> PlaceMyShips(GameId gameId, Player player, IEnumerable<Ship>? ships = null, bool doItForMe = false)

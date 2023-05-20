@@ -1,4 +1,4 @@
-﻿namespace BattleshipMelee.Server.Models;
+﻿namespace BattleshipEngine;
 
 [Serializable]
 public record GameId

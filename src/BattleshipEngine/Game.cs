@@ -6,6 +6,7 @@ public record Game(GameType GameType = GameType.Classic)
 	private readonly Dictionary<PlayerId, Board> _boards = new();
 	private readonly Dictionary<PlayerId, List<AttackResult>> _shots = new();
 
+	public GameId GameId { get; private set; } = Guid.NewGuid();
 	public bool AreFleetsReady => _boards.Values.All(board => board.IsFleetReady);
 	public int BoardSize => GetBoardSize(GameType);
 	public bool GameOver => _boards.Values.Any(board => board.IsFleetSunk);

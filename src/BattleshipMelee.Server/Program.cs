@@ -26,4 +26,9 @@ app.MapGet("/players", (GameService gameService) =>
 	return gameService.Clients.Values.Select(p => Player.PublicPlayer(p)).ToList();
 });
 
+//app.MapGet("/players/{gameId}", (GameService gameService) =>
+//{
+//	return gameService.Clients.Values.Select(p => Player.PublicPlayer(p)).ToList();
+//});
+
 app.Run();
