@@ -50,7 +50,7 @@ internal class BattleshipGame
 			game.PlaceShips(player, doItForMe: true);
 			myFleet = game.Fleet(player).ToDictionary(ship => ship.Type, ship => ship);
 		} else {
-			DisplayGrid(player, game);
+			DisplayEmptyGrid(player, game.BoardSize);
 			PlaceShips(game);
 		}
 
@@ -58,13 +58,13 @@ internal class BattleshipGame
 
 			gameStatus = GameStatus.Attacking;
 			DisplayStatus(gameStatus);
-			DisplayBoards(player, opponent, myFleet.Values, game);
+			DisplayBoards(player, opponent, myFleet.Values, game.BoardSize);
 
 			while (game.GameOver is false) {
 				if (TryGetCoordinateFromUser(_topRow + INPUT_ROW, out Coordinate coordinate)) {
 					_attackResults.Add(game.Fire(player, coordinate));
 					_attackResults.AddRange(game.OtherPlayersFire());
-					DisplayBoards(player, opponent, myFleet.Values, game);
+					DisplayBoards(player, opponent, myFleet.Values, game.BoardSize);
 				} else {
 					gameStatus = GameStatus.Abandoned;
 					break;
@@ -93,14 +93,15 @@ internal class BattleshipGame
 		gameStatus = GameStatus.PlacingShips;
 		DisplayStatus(gameStatus);
 
-		// Start game on network server
+		// ToDo: By the end of this rewrite game should not exist locally
 		Game game = new Game(GameType);
+		// ToDo: Start game on network server
 
 		if (RandomShipPlacement) {
 			game.PlaceShips(player, doItForMe: true);
 			myFleet = game.Fleet(player).ToDictionary(ship => ship.Type, ship => ship);
 		} else {
-			DisplayGrid(player, game);
+			DisplayEmptyGrid(player, game.BoardSize);
 			PlaceShips(game);
 		}
 
@@ -108,13 +109,13 @@ internal class BattleshipGame
 
 			gameStatus = GameStatus.Attacking;
 			DisplayStatus(gameStatus);
-			DisplayBoards(player, opponent, myFleet.Values, game);
+			DisplayBoards(player, opponent, myFleet.Values, game.BoardSize);
 
 			while (game.GameOver is false) {
 				if (TryGetCoordinateFromUser(_topRow + INPUT_ROW, out Coordinate coordinate)) {
 					_attackResults.Add(game.Fire(player, coordinate));
 					_attackResults.AddRange(game.OtherPlayersFire());
-					DisplayBoards(player, opponent, myFleet.Values, game);
+					DisplayBoards(player, opponent, myFleet.Values, game.BoardSize);
 				} else {
 					gameStatus = GameStatus.Abandoned;
 					break;
@@ -153,12 +154,12 @@ internal class BattleshipGame
 		}
 	}
 
-	private void DisplayBoards(Player player, Player opponent, IEnumerable<Ship> myFleetOfShips, Game game)
+	private void DisplayBoards(Player player, Player opponent, IEnumerable<Ship> myFleetOfShips, int boardSize)
 	{
-		DisplayGrid(opponent, game);
+		DisplayEmptyGrid(opponent, boardSize);
 		DisplayShotsOnGrid(opponent);
 
-		DisplayGrid(player, game, offsetCol: RIGHT_GRID);
+		DisplayEmptyGrid(player, boardSize, offsetCol: RIGHT_GRID);
 		DisplayShotsOnGrid(player, RIGHT_GRID);
 		DisplayShipsOnGrid(myFleetOfShips, RIGHT_GRID);
 	}
@@ -179,11 +180,11 @@ internal class BattleshipGame
 		Console.Write($" T H E   G A M E   O F   B A T T L E S H I P ");
 	}
 
-	private void DisplayGrid(Player player, Game game, int offsetCol = 4)
+	private void DisplayEmptyGrid(Player player, int boardSize, int offsetCol = 4)
 	{
 		const string SEA_COLOUR = "blue on black";
 		const char SEA = '.';
-		int boardSize = game.BoardSize;
+		//int boardSize = game.BoardSize;
 		int offsetRow = _topRow + BOARD_ROW;
 
 		Console.SetCursorPosition(offsetCol, offsetRow);
@@ -300,11 +301,11 @@ internal class BattleshipGame
 			privatePlayer = await hubConnection.InvokeAsync<PrivatePlayer>("RegisterPlayer", playerName);
 		}
 		catch (Exception ex) {
-			Console.WriteLine($"Error: {ex.Message}");
+			Debug.WriteLine($"Error in {nameof(RegisterPlayer)}: {ex.Message}");
 			throw;
 		}
 
-		Console.WriteLine($"Player returned: {player}");
+		Debug.WriteLine($"  Player returned: {player}");
 		return privatePlayer;
 	}
 
@@ -315,11 +316,11 @@ internal class BattleshipGame
 			player = await hubConnection.InvokeAsync<ComputerPlayer>("FindComputerOpponent");
 		}
 		catch (Exception ex) {
-			Console.WriteLine($"Error: {ex.Message}");
+			Debug.WriteLine($"Error in {nameof(FindOpponent)}: {ex.Message}");
 			throw;
 		}
 
-		Console.WriteLine($"Opponent returned: {player}");
+		Debug.WriteLine($"Opponent returned: {player}");
 		return player;
 	}
 
