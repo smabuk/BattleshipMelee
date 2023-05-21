@@ -60,6 +60,8 @@ internal class GameHub : Hub
 		if (_gameService.IsGameOver(gameId)) {
 			Clients.Client(Context.ConnectionId).SendAsync("GameStatusChange", GameStatus.GameOver);
 		}
+
+		Clients.Client(Context.ConnectionId).SendAsync("AttackResults", attackResults);
 		return attackResults;
 	}
 

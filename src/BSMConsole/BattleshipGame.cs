@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-
-using BattleshipEngine;
+﻿using BattleshipEngine;
 
 namespace BSMConsole;
 
@@ -23,6 +21,8 @@ internal class BattleshipGame
 	private const int INPUT_ROW = 18;
 	private const int CLEAR_WIDTH = 56;
 
+
+	static object consoleDisplayLock = new();
 	private int _topRow = int.MinValue;
 
 	private HubConnection _hubConnection = default!;
@@ -112,16 +112,29 @@ internal class BattleshipGame
 		opponent = await _hubConnection.InvokeAsync<ComputerPlayer>("FindComputerOpponent", player, gameId);
 
 		if (RandomShipPlacement) {
-			myFleet = (await 
+			myFleet = (await
 				_hubConnection
-				.InvokeAsync<List<Ship>>("PlaceShips", player, gameId, null, true))
-				.ToDictionary(ship => ship.Type, ship => ship);
+				.InvokeAsync<List<Ship>>("PlaceShips", player, gameId, null, true)
+				).ToDictionary(ship => ship.Type, ship => ship);
 		} else {
 			DisplayEmptyGrid(player, game.BoardSize);
+			// ToDo: implement local ship placement
 			PlaceShips(game);
 		}
 
 		Task.Delay(1000).Wait();
+		
+		_hubConnection.On<List<AttackResult>>("AttackResults", (attackResults) => {
+			foreach (AttackResult attackResult in attackResults.Where(ar => ar.TargetedPlayerId == player.Id)) {
+				if (attackResult.ShipType is ShipType s) {
+					myFleet[s].Attack(attackResult.AttackCoordinate);
+				}
+			}
+			_attackResults.AddRange(attackResults);
+			DisplayShotsOnGrid(opponent);
+			DisplayShotsOnGrid(player, RIGHT_GRID);
+			//Console.SetCursorPosition(INPUT_COL, _topRow + INPUT_ROW);
+		});
 
 		if (gameStatus is GameStatus.Attacking) {
 
@@ -133,13 +146,9 @@ internal class BattleshipGame
 				if (TryGetCoordinateFromUser(_topRow + INPUT_ROW, out Coordinate coordinate)) {
 					List<AttackResult> attackResults = await _hubConnection
 						.InvokeAsync<List<AttackResult>>("Fire", player, gameId, coordinate);
-					foreach (AttackResult attackResult in attackResults.Where(ar => ar.TargetedPlayerId == player.Id)) {
-						if (attackResult.ShipType is ShipType s ) {
-							myFleet[s].Attack(attackResult.AttackCoordinate);
-						}
-					}
-					_attackResults.AddRange(attackResults);
-					DisplayBoards(player, opponent, myFleet.Values, game.BoardSize);
+					//DisplayBoards(player, opponent, myFleet.Values, game.BoardSize);
+					//DisplayShotsOnGrid(opponent);
+					//DisplayShotsOnGrid(player, RIGHT_GRID);
 				} else {
 					gameStatus = GameStatus.Abandoned;
 					break;
@@ -175,6 +184,7 @@ internal class BattleshipGame
 				DisplayShipsOnGrid(myFleet.Values);
 				DisplayStatus(GameStatus.PlacingShips, $" [green]{ship.Type.ToFriendlyString()}[/] ({ship.NoOfSegments} segments) ");
 				(Orientation Orientation, Coordinate Coordinate)? result = GetShipPlacementFromUser(_topRow + INPUT_ROW);
+
 
 				if (!result.HasValue) {
 					return;
@@ -248,22 +258,35 @@ internal class BattleshipGame
 			GameStatus.Abandoned => "Abandoned",
 			_ => "                  "
 		};
-		Console.SetCursorPosition(8, _topRow + STATUS_ROW);
-		Console.Write(new string(' ', CLEAR_WIDTH));
-		Console.SetCursorPosition(8, _topRow + STATUS_ROW);
-		AnsiConsole.Markup($"[yellow]{message}[/]{markupMessage}");
+
+		lock (consoleDisplayLock) {
+			(int currCol, int currRow) = Console.GetCursorPosition();
+
+			Console.SetCursorPosition(8, _topRow + STATUS_ROW);
+			Console.Write(new string(' ', CLEAR_WIDTH));
+			Console.SetCursorPosition(8, _topRow + STATUS_ROW);
+			AnsiConsole.Markup($"[yellow]{message}[/]{markupMessage}");
+			
+			Console.SetCursorPosition(currCol, currRow);
+		}
 	}
 
 	private void DisplayFinalSummary(Game game)
 	{
-		Console.SetCursorPosition(0, _topRow + GAME_HEIGHT - 2);
-		Console.WriteLine();
-		Console.WriteLine();
-		Console.WriteLine($" Results");
-		AnsiConsole.MarkupLineInterpolated($"  [bold]Pos Score  Player Name    [/]");
-		List<LeaderboardEntry> leaderboard = game.LeaderBoard().ToList();
-		foreach (LeaderboardEntry playerWithScore in leaderboard) {
-			AnsiConsole.MarkupLineInterpolated($"   [{(playerWithScore.Position == 1 ? "gold1 on black" : "on black")}]{playerWithScore.Position}   {playerWithScore.Score,3}   {playerWithScore.Name,-20}[/]");
+		lock (consoleDisplayLock) {
+			(int currCol, int currRow) = Console.GetCursorPosition();
+
+			Console.SetCursorPosition(0, _topRow + GAME_HEIGHT - 2);
+			Console.WriteLine();
+			Console.WriteLine();
+			Console.WriteLine($" Results");
+			AnsiConsole.MarkupLineInterpolated($"  [bold]Pos Score  Player Name    [/]");
+			List<LeaderboardEntry> leaderboard = game.LeaderBoard().ToList();
+			foreach (LeaderboardEntry playerWithScore in leaderboard) {
+				AnsiConsole.MarkupLineInterpolated($"   [{(playerWithScore.Position == 1 ? "gold1 on black" : "on black")}]{playerWithScore.Position}   {playerWithScore.Score,3}   {playerWithScore.Name,-20}[/]");
+			}
+
+			Console.SetCursorPosition(currCol, currRow);
 		}
 	}
 
@@ -277,21 +300,27 @@ internal class BattleshipGame
 		int offsetRow = _topRow + BOARD_ROW;
 		IEnumerable<AttackResult> shots = _attackResults.Where(s => s.TargetedPlayerId == player.Id);
 
-		foreach (AttackResult shot in shots) {
-			Console.SetCursorPosition(offsetCol + 3 + (shot.AttackCoordinate.Col * 2), offsetRow + 2 + shot.AttackCoordinate.Row);
-			bool sunk = shots.Any(s => s.ShipType == shot.ShipType && s.HitOrMiss == AttackResultType.HitAndSunk);
-			if (shot.HitOrMiss is AttackResultType.Miss or AttackResultType.Hit or AttackResultType.HitAndSunk) {
-				string hitormiss = shot.HitOrMiss switch
-				{
-					AttackResultType.Miss => MISS,
-					AttackResultType.Hit => sunk ? $"[{SUNK_COLOUR}]{GetShipShape(shot.ShipType).ToUpper()}[/]" : $"[{HIT_COLOUR}]{GetShipShape(shot.ShipType)}[/]",
-					AttackResultType.HitAndSunk => $"[{SUNK_COLOUR}]{GetShipShape(shot.ShipType).ToUpper()}[/]",
-					AttackResultType.AlreadyAttacked => throw new ArgumentOutOfRangeException(nameof(shot.HitOrMiss)),
-					AttackResultType.InvalidPosition => throw new ArgumentOutOfRangeException(nameof(shot.HitOrMiss)),
-					_ => throw new ArgumentOutOfRangeException(nameof(shot.HitOrMiss)),
-				};
-				AnsiConsole.Markup(hitormiss);
+		lock (consoleDisplayLock) {
+			(int currCol, int currRow) = Console.GetCursorPosition();
+
+			foreach (AttackResult shot in shots) {
+				Console.SetCursorPosition(offsetCol + 3 + (shot.AttackCoordinate.Col * 2), offsetRow + 2 + shot.AttackCoordinate.Row);
+				bool sunk = shots.Any(s => s.ShipType == shot.ShipType && s.HitOrMiss == AttackResultType.HitAndSunk);
+				if (shot.HitOrMiss is AttackResultType.Miss or AttackResultType.Hit or AttackResultType.HitAndSunk) {
+					string hitormiss = shot.HitOrMiss switch
+					{
+						AttackResultType.Miss => MISS,
+						AttackResultType.Hit => sunk ? $"[{SUNK_COLOUR}]{GetShipShape(shot.ShipType).ToUpper()}[/]" : $"[{HIT_COLOUR}]{GetShipShape(shot.ShipType)}[/]",
+						AttackResultType.HitAndSunk => $"[{SUNK_COLOUR}]{GetShipShape(shot.ShipType).ToUpper()}[/]",
+						AttackResultType.AlreadyAttacked => throw new ArgumentOutOfRangeException(nameof(shot.HitOrMiss)),
+						AttackResultType.InvalidPosition => throw new ArgumentOutOfRangeException(nameof(shot.HitOrMiss)),
+						_ => throw new ArgumentOutOfRangeException(nameof(shot.HitOrMiss)),
+					};
+					AnsiConsole.Markup(hitormiss);
+				}
 			}
+
+			Console.SetCursorPosition(currCol, currRow);
 		}
 	}
 
@@ -305,17 +334,23 @@ internal class BattleshipGame
 		int offsetRow = _topRow + BOARD_ROW;
 
 		// Display ships on the board
-		if (ships is not null) {
-			foreach (Ship ship in ships) {
-				foreach (ShipSegment segment in ship.Segments.Values) {
-					Console.SetCursorPosition(offsetCol + 3 + (segment.Coordinate.Col * 2), offsetRow + 2 + segment.Coordinate.Row);
-					string hitormiss = segment.IsHit
-						? $"[{HIT_COLOUR}]{GetShipShape(ship.Type)}[/]"
-						: GetShipShape(ship.Type);
-					hitormiss = ship.IsSunk ? hitormiss.ToUpper() : hitormiss;
-					AnsiConsole.Markup(hitormiss);
+		lock (consoleDisplayLock) {
+			(int currCol, int currRow) = Console.GetCursorPosition();
+
+			if (ships is not null) {
+				foreach (Ship ship in ships) {
+					foreach (ShipSegment segment in ship.Segments.Values) {
+						string hitormiss = segment.IsHit
+							? $"[{HIT_COLOUR}]{GetShipShape(ship.Type)}[/]"
+							: GetShipShape(ship.Type);
+						hitormiss = ship.IsSunk ? hitormiss.ToUpper() : hitormiss;
+						Console.SetCursorPosition(offsetCol + 3 + (segment.Coordinate.Col * 2), offsetRow + 2 + segment.Coordinate.Row);
+						AnsiConsole.Markup(hitormiss);
+					}
 				}
 			}
+
+			Console.SetCursorPosition(currCol, currRow);
 		}
 	}
 
@@ -468,11 +503,13 @@ internal class BattleshipGame
 	{
 		const int ONE_MINUTE = 60000;
 
-		Console.SetCursorPosition(col, row);
-		Console.Write(new string(' ', clearCols));
+		lock (consoleDisplayLock) {
+			Console.SetCursorPosition(col, row);
+			Console.Write(new string(' ', clearCols));
 
-		Console.SetCursorPosition(col, row);
-		AnsiConsole.Markup($" {message}{input}");
+			Console.SetCursorPosition(col, row);
+			AnsiConsole.Markup($" {message}{input}");
+		}
 
 		// If we get a timeout return a key that we don't use (Zoom)
 		return KeyReader.ReadKey(ONE_MINUTE) ?? ConsoleKey.Zoom;
