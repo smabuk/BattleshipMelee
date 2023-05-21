@@ -2,12 +2,12 @@
 
 public class PlayerTests
 {
-	readonly PrivatePlayer privatePlayer;
+	readonly AuthPlayer privatePlayer;
 	private Game _game;
 
 	public PlayerTests()
 	{
-		privatePlayer = new PrivatePlayer("Test player");
+		privatePlayer = new AuthPlayer("Test player");
 		List<Player> players = new()
 		{
 			privatePlayer
@@ -24,10 +24,10 @@ public class PlayerTests
 	[Fact]
 	public void UserIsNotWhoTheySayTheyAre()
 	{
-		PrivatePlayer player1 = new PrivatePlayer(privatePlayer.Name);
+		AuthPlayer player1 = new AuthPlayer(privatePlayer.Name);
 		Assert.False(privatePlayer.IsUserWhoTheySayTheyAre(player1));
 
-		PrivatePlayer player2 = privatePlayer with { PrivateId = Guid.NewGuid().ToString() };
+		AuthPlayer player2 = privatePlayer with { PrivateId = Guid.NewGuid().ToString() };
 		Assert.False(privatePlayer.IsUserWhoTheySayTheyAre(player2));
 
 		Player player3 = Player.PublicPlayer(privatePlayer);

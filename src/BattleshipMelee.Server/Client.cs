@@ -1,5 +1,5 @@
 ﻿namespace BattleshipMelee.Server;
 
-internal record Client(string ConnectionId, PrivatePlayer Player)
+internal record Client(string ConnectionId, AuthPlayer Player)
 {
 }

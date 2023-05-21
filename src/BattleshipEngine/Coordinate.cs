@@ -1,6 +1,4 @@
-﻿using System.Text.Json.Serialization;
-
-namespace BattleshipEngine;
+﻿namespace BattleshipEngine;
 
 public record Coordinate(int Row, int Col) : IParsable<Coordinate>
 {

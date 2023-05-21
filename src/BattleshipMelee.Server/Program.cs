@@ -31,4 +31,9 @@ app.MapGet("/games", (GameService gameService) =>
 	return gameService.Games.Values.ToList();
 });
 
+app.MapGet("/games/{gameId}", (GameId gameId, GameService gameService) =>
+{
+	return gameService.Games[gameId].LeaderBoard().ToList();
+});
+
 app.Run();

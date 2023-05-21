@@ -1,4 +1,6 @@
-﻿using BattleshipEngine;
+﻿using System.Collections.Generic;
+
+using BattleshipEngine;
 
 namespace BSMConsole;
 
@@ -28,7 +30,7 @@ internal class BattleshipGame
 	private readonly List<AttackResult> _attackResults = new();
 	private Dictionary<ShipType, Ship> myFleet = new();
 
-	private PrivatePlayer player = new("Me");
+	private AuthPlayer player = new("Me");
 	private ComputerPlayer opponent = new ComputerPlayer("Computer");
 
 	internal void Play()
@@ -89,18 +91,25 @@ internal class BattleshipGame
 		GameStatus gameStatus = GameStatus.AddingPlayers;
 
 		await PrepareNetwork(Uri);
+
+		//_hubConnection.On<Player>("Opponents", (player) => {
+		//	Debug.WriteLine($"Opponent: {player}");
+		//	opponent = player is ComputerPlayer p ? p : throw new ApplicationException("No opponents found.");
+		//});
+		
 		player = await RegisterPlayer(PlayerName);
-		//opponent = await FindOpponent(true);
 
 		_topRow = PrepareGameSpace();
 
 		DisplayGame();
 
-		gameStatus = GameStatus.PlacingShips;
-		DisplayStatus(gameStatus);
+		_hubConnection.On<GameId>("StartGame", (gId) => { gameId = gId; });
+		_hubConnection.On<GameStatus>("GameStatusChange", (gStat) => { gameStatus = gStat; DisplayStatus(gameStatus); });
 
-		// ToDo: By the end of this rewrite game should not exist locally
+		
 		gameId = await PlayVsComputer(player, gameType: GameType);
+
+		opponent = await _hubConnection.InvokeAsync<ComputerPlayer>("FindComputerOpponent", player, gameId);
 
 		if (RandomShipPlacement) {
 			myFleet = (await 
@@ -112,16 +121,24 @@ internal class BattleshipGame
 			PlaceShips(game);
 		}
 
-		if (game.AreFleetsReady) {
+		Task.Delay(1000).Wait();
+
+		if (gameStatus is GameStatus.Attacking) {
 
 			gameStatus = GameStatus.Attacking;
 			DisplayStatus(gameStatus);
 			DisplayBoards(player, opponent, myFleet.Values, game.BoardSize);
 
-			while (game.GameOver is false) {
+			while (gameStatus is GameStatus.Attacking) {
 				if (TryGetCoordinateFromUser(_topRow + INPUT_ROW, out Coordinate coordinate)) {
-					_attackResults.Add(game.Fire(player, coordinate));
-					_attackResults.AddRange(game.OtherPlayersFire());
+					List<AttackResult> attackResults = await _hubConnection
+						.InvokeAsync<List<AttackResult>>("Fire", player, gameId, coordinate);
+					foreach (AttackResult attackResult in attackResults.Where(ar => ar.TargetedPlayerId == player.Id)) {
+						if (attackResult.ShipType is ShipType s ) {
+							myFleet[s].Attack(attackResult.AttackCoordinate);
+						}
+					}
+					_attackResults.AddRange(attackResults);
 					DisplayBoards(player, opponent, myFleet.Values, game.BoardSize);
 				} else {
 					gameStatus = GameStatus.Abandoned;
@@ -130,10 +147,18 @@ internal class BattleshipGame
 			}
 		}
 
-		gameStatus = game.GameOver ? GameStatus.GameOver : GameStatus.Abandoned;
 		DisplayStatus(gameStatus);
 
-		DisplayFinalSummary(game);
+		Console.SetCursorPosition(0, _topRow + GAME_HEIGHT - 2);
+		Console.WriteLine();
+		Console.WriteLine();
+		Console.WriteLine($" Results");
+		AnsiConsole.MarkupLineInterpolated($"  [bold]Pos Score  Player Name    [/]");
+		List<LeaderboardEntry> leaderboard = await _hubConnection
+			.InvokeAsync<List<LeaderboardEntry>>("Leaderboard", gameId);
+		foreach (LeaderboardEntry playerWithScore in leaderboard) {
+			AnsiConsole.MarkupLineInterpolated($"   [{(playerWithScore.Position == 1 ? "gold1 on black" : "on black")}]{playerWithScore.Position}   {playerWithScore.Score,3}   {playerWithScore.Name,-20}[/]");
+		}
 	}
 
 	private void PlaceShips(Game game)
@@ -236,9 +261,9 @@ internal class BattleshipGame
 		Console.WriteLine();
 		Console.WriteLine($" Results");
 		AnsiConsole.MarkupLineInterpolated($"  [bold]Pos Score  Player Name    [/]");
-		List<RankedPlayer> leaderboard = game.LeaderBoard().ToList();
-		foreach (RankedPlayer playerWithScore in leaderboard) {
-			AnsiConsole.MarkupLineInterpolated($"   [{(playerWithScore.Position == 1 ? "gold1 on black" : "on black")}]{playerWithScore.Position}   {playerWithScore.Score,3}   {playerWithScore.Player.Name,-20}[/]");
+		List<LeaderboardEntry> leaderboard = game.LeaderBoard().ToList();
+		foreach (LeaderboardEntry playerWithScore in leaderboard) {
+			AnsiConsole.MarkupLineInterpolated($"   [{(playerWithScore.Position == 1 ? "gold1 on black" : "on black")}]{playerWithScore.Position}   {playerWithScore.Score,3}   {playerWithScore.Name,-20}[/]");
 		}
 	}
 
@@ -250,7 +275,7 @@ internal class BattleshipGame
 		const string MISS = $"[{MISS_COLOUR}]O[/]";
 
 		int offsetRow = _topRow + BOARD_ROW;
-		IEnumerable<AttackResult> shots = _attackResults.Where(s => s.TargetedPlayer?.Id == player.Id);
+		IEnumerable<AttackResult> shots = _attackResults.Where(s => s.TargetedPlayerId == player.Id);
 
 		foreach (AttackResult shot in shots) {
 			Console.SetCursorPosition(offsetCol + 3 + (shot.AttackCoordinate.Col * 2), offsetRow + 2 + shot.AttackCoordinate.Row);
@@ -304,11 +329,11 @@ internal class BattleshipGame
 		await _hubConnection.StartAsync();
 	}
 
-	private async Task<PrivatePlayer> RegisterPlayer(string playerName)
+	private async Task<AuthPlayer> RegisterPlayer(string playerName)
 	{
-		PrivatePlayer privatePlayer;
+		AuthPlayer privatePlayer;
 		try {
-			privatePlayer = await _hubConnection.InvokeAsync<PrivatePlayer>("RegisterPlayer", playerName);
+			privatePlayer = await _hubConnection.InvokeAsync<AuthPlayer>("RegisterPlayer", playerName);
 		}
 		catch (Exception ex) {
 			Debug.WriteLine($"Error in {nameof(RegisterPlayer)}: {ex.Message}");
@@ -334,7 +359,7 @@ internal class BattleshipGame
 		return player;
 	}
 
-	private async Task<string> PlayVsComputer(PrivatePlayer player, string computerPlayerName = "Computer", GameType gameType = GameType.Classic)
+	private async Task<string> PlayVsComputer(AuthPlayer player, string computerPlayerName = "Computer", GameType gameType = GameType.Classic)
 	{
 		string? gameId;
 		try {
@@ -451,14 +476,5 @@ internal class BattleshipGame
 
 		// If we get a timeout return a key that we don't use (Zoom)
 		return KeyReader.ReadKey(ONE_MINUTE) ?? ConsoleKey.Zoom;
-	}
-
-	enum GameStatus
-	{
-		AddingPlayers,
-		PlacingShips,
-		Attacking,
-		GameOver,
-		Abandoned,
 	}
 }

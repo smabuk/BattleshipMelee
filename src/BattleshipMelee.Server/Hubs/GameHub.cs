@@ -19,26 +19,58 @@ internal class GameHub : Hub
 		return base.OnDisconnectedAsync(exception);
 	}
 
-	public PrivatePlayer RegisterPlayer(string name)
+	public AuthPlayer RegisterPlayer(string name)
 	{
-		return (PrivatePlayer)_gameService.AddPlayer(Context.ConnectionId, name);
+		return (AuthPlayer)_gameService.AddPlayer(Context.ConnectionId, name);
 	}
 
-	public void UnRegisterPlayer(PrivatePlayer privatePlayer)
+	public void UnRegisterPlayer(AuthPlayer privatePlayer)
 	{
 		_gameService.RemovePlayer(Context.ConnectionId, privatePlayer.Name);
 	}
 
-	public string? StartGameVsComputer(PrivatePlayer player, string computerPlayerName = "Computer", GameType gameType = GameType.Classic)
+	public async Task<GameId?> StartGameVsComputer(AuthPlayer player, string computerPlayerName = "Computer", GameType gameType = GameType.Classic)
 	{
-		return _gameService.StartGameWithComputer(player, computerPlayerName, gameType);
+		GameId gameId = _gameService.StartGameWithComputer(player, computerPlayerName, gameType) ?? "";
+		if (gameId != "") {
+			List<Player> players = _gameService.FindOpponents(player, gameId);
+			await Clients.Client(Context.ConnectionId).SendAsync("Opponents", players);
+
+			await Groups.AddToGroupAsync(Context.ConnectionId, gameId);
+			await Clients.Client(Context.ConnectionId).SendAsync("StartGame", gameId);
+		}
+		return gameId;
 	}
 
-	public List<Ship> PlaceShips(PrivatePlayer player, string gameId, List<Ship>? ships = null, bool doItForMe = false)
+	public List<Ship> PlaceShips(AuthPlayer player, GameId gameId, List<Ship>? ships = null, bool doItForMe = false)
 	{
-		return _gameService.PlaceShips(player, gameId, ships, doItForMe);
+		Clients.Client(Context.ConnectionId).SendAsync("GameStatusChange", GameStatus.PlacingShips);
+		List<Ship> shipsResult = _gameService.PlaceShips(player, gameId, ships, doItForMe);
+		Clients.Client(Context.ConnectionId).SendAsync("GameStatusChange", GameStatus.Attacking);
+		return shipsResult;
 	}
 
+	public List<AttackResult> Fire(AuthPlayer player, GameId gameId, Coordinate attackCoordinate)
+	{
+		List<AttackResult> attackResults = new()
+		{
+			_gameService.Fire(player, gameId, attackCoordinate),
+		};
+		attackResults.AddRange(_gameService.ComputerPlayersFire(player, gameId, attackCoordinate));
+		if (_gameService.IsGameOver(gameId)) {
+			Clients.Client(Context.ConnectionId).SendAsync("GameStatusChange", GameStatus.GameOver);
+		}
+		return attackResults;
+	}
 
+	public ComputerPlayer FindComputerOpponent(AuthPlayer player, GameId gameId)
+	{
+		return _gameService.FindOpponents(player, gameId).Where(p => p is ComputerPlayer).Select(p => (ComputerPlayer)p).First();
+	}
+
+	public List<LeaderboardEntry> Leaderboard(GameId gameId)
+	{
+		return _gameService.Leaderboard(gameId);
+	}
 
 }

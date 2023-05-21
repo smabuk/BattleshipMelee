@@ -14,7 +14,7 @@ public class GameTests
 	[Fact]
 	public void PlayGame()
 	{
-		Player privatePlayer1 = new PrivatePlayer("Test player");
+		Player privatePlayer1 = new AuthPlayer("Test player");
 		Player computerPlayer2 = new ComputerPlayer("Computer");
 		List<Player> players = new()
 		{
@@ -58,15 +58,15 @@ public class GameTests
 
 		Assert.True(game.GameOver);
 
-		List<RankedPlayer> leaderboard = game.LeaderBoard().ToList();
-		Assert.Equal(1, leaderboard.Single(s => s.Player.Id == computerPlayer2.Id).Position);
-		Assert.Equal(2, leaderboard.Single(s => s.Player.Id == privatePlayer1.Id).Position);
+		List<LeaderboardEntry> leaderboard = game.LeaderBoard().ToList();
+		Assert.Equal(1, leaderboard.Single(s => s.Name == computerPlayer2.Name).Position);
+		Assert.Equal(2, leaderboard.Single(s => s.Name == privatePlayer1.Name).Position);
 	}
 
 	[Fact]
 	public void PlaceShipsIntoGame()
 	{
-		Player privatePlayer1 = new PrivatePlayer("Test player");
+		Player privatePlayer1 = new AuthPlayer("Test player");
 		Player computerPlayer2 = new ComputerPlayer("Computer");
 		List<Player> players = new()
 		{
@@ -101,7 +101,7 @@ public class GameTests
 	[InlineData(true)]
 	public void PlaceShipsRandomlyIntoGame(bool withShips)
 	{
-		Player privatePlayer1 = new PrivatePlayer("Test player");
+		Player privatePlayer1 = new AuthPlayer("Test player");
 		List<Player> players = new()
 		{
 			privatePlayer1,

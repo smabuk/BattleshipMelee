@@ -10,3 +10,8 @@ GET https://{{host}}/players
 GET https://{{host}}/games
 
 ###
+
+@gameId=38a557f3-2140-441c-a4c3-b5cf183c8fc7
+GET https://{{host}}/games/{{gameId}}
+
+###
