@@ -1,4 +1,6 @@
-﻿using BattleshipEngine;
+﻿using System.Text;
+
+using BattleshipEngine;
 
 namespace BSMConsole;
 
@@ -28,10 +30,10 @@ internal class BattleshipGame
 	private HubConnection _hubConnection = default!;
 	
 	private readonly List<AttackResult> _attackResults = new();
-	private Dictionary<ShipType, Ship> myFleet = new();
+	private Dictionary<ShipType, Ship> _myFleet = new();
 
 	private AuthPlayer player = new("Me");
-	private ComputerPlayer opponent = new ComputerPlayer("Computer");
+	private ComputerPlayer opponent = new("Computer");
 
 	internal void Play()
 	{
@@ -54,7 +56,7 @@ internal class BattleshipGame
 
 		if (RandomShipPlacement) {
 			game.PlaceShips(player, doItForMe: true);
-			myFleet = game.Fleet(player).ToDictionary(ship => ship.Type, ship => ship);
+			_myFleet = game.Fleet(player).ToDictionary(ship => ship.Type, ship => ship);
 		} else {
 			DisplayEmptyGrid(player, game.BoardSize);
 			PlaceShips(game);
@@ -64,13 +66,13 @@ internal class BattleshipGame
 
 			gameStatus = GameStatus.Attacking;
 			DisplayStatus(gameStatus);
-			DisplayBoards(player, opponent, myFleet.Values, game.BoardSize);
+			DisplayBoards(player, opponent, _myFleet.Values, game.BoardSize);
 
 			while (game.GameOver is false) {
 				if (TryGetCoordinateFromUser(_topRow + INPUT_ROW, out Coordinate coordinate)) {
 					_attackResults.Add(game.Fire(player, coordinate));
 					_attackResults.AddRange(game.OtherPlayersFire());
-					DisplayBoards(player, opponent, myFleet.Values, game.BoardSize);
+					DisplayBoards(player, opponent, _myFleet.Values, game.BoardSize);
 				} else {
 					gameStatus = GameStatus.Abandoned;
 					break;
@@ -111,23 +113,30 @@ internal class BattleshipGame
 
 		opponent = await _hubConnection.InvokeAsync<ComputerPlayer>("FindComputerOpponent", player, gameId);
 
-		if (RandomShipPlacement) {
-			myFleet = (await
-				_hubConnection
-				.InvokeAsync<List<Ship>>("PlaceShips", player, gameId, null, true)
-				).ToDictionary(ship => ship.Type, ship => ship);
-		} else {
+		List<Ship> ships = new();
+		if (RandomShipPlacement is false) {
 			DisplayEmptyGrid(player, game.BoardSize);
-			// ToDo: implement local ship placement
-			PlaceShips(game);
+			ships = PlaceShipsForNetworkPlay(Game.GameShips(GameType));
+			if (ships is null) {
+				gameStatus = GameStatus.Abandoned;
+				DisplayStatus(gameStatus);
+				Console.SetCursorPosition(0, _topRow + GAME_HEIGHT - 2);
+				Console.WriteLine();
+				Console.WriteLine();
+				return;
+			}
 		}
+		_myFleet = (await
+				_hubConnection
+				.InvokeAsync<List<Ship>>("PlaceShips", player, gameId, ships, RandomShipPlacement))
+			.ToDictionary(ship => ship.Type, ship => ship);
 
-		Task.Delay(1000).Wait();
+		Task.Delay(500).Wait();
 		
 		_hubConnection.On<List<AttackResult>>("AttackResults", (attackResults) => {
 			foreach (AttackResult attackResult in attackResults.Where(ar => ar.TargetedPlayerId == player.Id)) {
 				if (attackResult.ShipType is ShipType s) {
-					myFleet[s].Attack(attackResult.AttackCoordinate);
+					_myFleet[s].Attack(attackResult.AttackCoordinate);
 				}
 			}
 			_attackResults.AddRange(attackResults);
@@ -140,7 +149,7 @@ internal class BattleshipGame
 
 			gameStatus = GameStatus.Attacking;
 			DisplayStatus(gameStatus);
-			DisplayBoards(player, opponent, myFleet.Values, game.BoardSize);
+			DisplayBoards(player, opponent, _myFleet.Values, game.BoardSize);
 
 			while (gameStatus is GameStatus.Attacking) {
 				if (TryGetCoordinateFromUser(_topRow + INPUT_ROW, out Coordinate coordinate)) {
@@ -172,16 +181,16 @@ internal class BattleshipGame
 
 	private void PlaceShips(Game game)
 	{
-		myFleet = Game.GameShips(GameType).ToDictionary(ship => ship.Type);
+		_myFleet = Game.GameShips(GameType).ToDictionary(ship => ship.Type);
 
-		DisplayShipsOnGrid(myFleet.Values);
+		DisplayShipsOnGrid(_myFleet.Values);
 
-		List<Ship> fleet = myFleet.Values.Where(ship => ship.IsPositioned == false).ToList();
+		List<Ship> fleet = _myFleet.Values.Where(ship => ship.IsPositioned == false).ToList();
 
 		foreach (Ship ship in fleet) {
 			Ship newShip;
 			do {
-				DisplayShipsOnGrid(myFleet.Values);
+				DisplayShipsOnGrid(_myFleet.Values);
 				DisplayStatus(GameStatus.PlacingShips, $" [green]{ship.Type.ToFriendlyString()}[/] ({ship.NoOfSegments} segments) ");
 				(Orientation Orientation, Coordinate Coordinate)? result = GetShipPlacementFromUser(_topRow + INPUT_ROW);
 
@@ -192,8 +201,36 @@ internal class BattleshipGame
 				newShip = new(ship.Type, result.Value.Coordinate, result.Value.Orientation);
 
 			} while (!game.PlaceShip(player, newShip));
-			myFleet[newShip.Type] = newShip;
+			_myFleet[newShip.Type] = newShip;
 		}
+	}
+
+	private List<Ship> PlaceShipsForNetworkPlay(IEnumerable<Ship> myFleet)
+	{
+		List<Ship> fleet = myFleet.ToList();
+		List<Ship> newFleet = myFleet.ToList();
+
+		for (int i = 0; i < fleet.Count(); i++) {
+			Ship ship = fleet[i];
+			bool badPlacement = true;
+			do {
+				DisplayShipsOnGrid(fleet);
+				DisplayStatus(GameStatus.PlacingShips, $" [green]{ship.Type.ToFriendlyString()}[/] ({ship.NoOfSegments} segments) ");
+				(Orientation Orientation, Coordinate Coordinate)? result = GetShipPlacementFromUser(_topRow + INPUT_ROW);
+
+				if (!result.HasValue) {
+					return null!;
+				}
+
+				newFleet[i] = new(ship.Type, result.Value.Coordinate, result.Value.Orientation);
+				if (Board.ValidateShipPositions(newFleet)) {
+					badPlacement = false;
+					fleet[i] = new(ship.Type, result.Value.Coordinate, result.Value.Orientation);
+				}
+
+			} while (badPlacement);
+		}
+		return fleet.ToList();
 	}
 
 	private void DisplayBoards(Player player, Player opponent, IEnumerable<Ship> myFleetOfShips, int boardSize)

@@ -10,7 +10,7 @@
     },
     "BSMConsole Networked": {
       "commandName": "Project",
-      "commandLineArgs": "-r -n --host localhost --port 7284"
+      "commandLineArgs": "-n --host localhost --port 7284"
     }
   }
 }

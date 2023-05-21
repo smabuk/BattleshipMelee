@@ -1,4 +1,6 @@
-﻿var builder = WebApplication.CreateBuilder(args);
+﻿using Microsoft.AspNetCore.Http.HttpResults;
+
+var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -21,19 +23,22 @@ app.UseHttpsRedirection();
 
 app.MapHub<GameHub>("/bsm");
 
-app.MapGet("/players", (GameService gameService) =>
+app.MapGet("/players", Ok<List<Player>> (GameService gameService) =>
 {
-	return gameService.Clients.Values.Select(p => Player.PublicPlayer(p)).ToList();
+	return TypedResults.Ok(gameService.Clients.Values.Select(p => Player.PublicPlayer(p)).ToList());
 });
 
-app.MapGet("/games", (GameService gameService) =>
+app.MapGet("/games", Ok<List<Game>> (GameService gameService) =>
 {
-	return gameService.Games.Values.ToList();
+	return TypedResults.Ok(gameService.Games.Values.ToList());
 });
 
-app.MapGet("/games/{gameId}", (GameId gameId, GameService gameService) =>
+app.MapGet("/leaderboard/{gameId}", Results<Ok<List<LeaderboardEntry>>, NotFound> (GameId gameId, GameService gameService) =>
 {
-	return gameService.Games[gameId].LeaderBoard().ToList();
+	if (gameService.Games.TryGetValue(gameId, out Game? game)) {
+		return TypedResults.Ok(game.LeaderBoard().ToList());
+	}
+	return TypedResults.NotFound();
 });
 
 app.Run();

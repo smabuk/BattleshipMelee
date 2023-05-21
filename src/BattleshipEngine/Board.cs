@@ -1,9 +1,9 @@
 ﻿[assembly: InternalsVisibleToAttribute("BattleshipEngine.Tests")]
 namespace BattleshipEngine;
 
-internal record Board(int BoardSize)
+public record Board(int BoardSize)
 {
-	internal required List<Ship> Fleet { get; init; }
+	public required List<Ship> Fleet { get; init; }
 	private readonly HashSet<Coordinate> placedSegments = new();
 
 	public bool PlaceShip(Ship shipToPlace)
@@ -45,5 +45,10 @@ internal record Board(int BoardSize)
 
 	public bool IsFleetReady => !Fleet.Any(ship => ship.IsPositioned == false);
 	public bool IsFleetSunk => Fleet.All(ship => ship.IsSunk);
+
+	public static bool ValidateShipPositions(IEnumerable<Ship> ships)
+	{
+		return !ships.SelectMany(ship => ship.Segments.Keys).GroupBy(c => c).Any(c => c.Count() > 1);
+	}
 
 }

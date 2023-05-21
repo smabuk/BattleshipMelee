@@ -11,7 +11,7 @@ GET https://{{host}}/games
 
 ###
 
-@gameId=38a557f3-2140-441c-a4c3-b5cf183c8fc7
-GET https://{{host}}/games/{{gameId}}
+@gameId=1e62bc46-b387-4a54-8288-6043c6b1d538
+GET https://{{host}}/leaderboard/{{gameId}}
 
 ###
