@@ -45,7 +45,7 @@ public class GameService
 		return null;
 	}
 
-	public List<Ship> PlaceShips(AuthPlayer player, string gameId, List<Ship>? ships, bool doItForMe = false) {
+	public List<Ship> PlaceShips(AuthPlayer player, GameId gameId, List<Ship>? ships, bool doItForMe = false) {
 		if (Games.ContainsKey(gameId)) {
 			Games[gameId].PlaceShips(player, ships, doItForMe);
 			return Games[gameId].Fleet(player);
@@ -53,7 +53,7 @@ public class GameService
 		return new();
 	}
 
-	public AttackResult Fire(AuthPlayer player, string gameId, Coordinate attackCoordinate) {
+	public AttackResult Fire(AuthPlayer player, GameId gameId, Coordinate attackCoordinate) {
 		if (Games.ContainsKey(gameId)) {
 			AttackResult attackResult = Games[gameId].Fire(player, attackCoordinate);
 			return attackResult;
@@ -61,7 +61,7 @@ public class GameService
 		return new AttackResult(attackCoordinate, AttackResultType.InvalidPosition);
 	}
 
-	public List<AttackResult> ComputerPlayersFire(AuthPlayer player, string gameId, Coordinate attackCoordinate) {
+	public List<AttackResult> ComputerPlayersFire(AuthPlayer player, GameId gameId, Coordinate attackCoordinate) {
 		if (Games.ContainsKey(gameId)) {
 			List<AttackResult> attackResults = Games[gameId].OtherPlayersFire().ToList();
 			return attackResults;
@@ -69,7 +69,7 @@ public class GameService
 		return new List<AttackResult>();
 	}
 
-	public List<Player> FindOpponents(AuthPlayer player, string gameId) {
+	public List<Player> FindOpponents(AuthPlayer player, GameId gameId) {
 		if (Games.ContainsKey(gameId)) {
 			return Games[gameId]._players.Where(x => x.Key != player.Id).Select(x => x.Value).ToList();
 		}

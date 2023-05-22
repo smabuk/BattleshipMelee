@@ -89,7 +89,7 @@ internal class BattleshipGame
 	internal async Task PlayNetworkGame()
 	{
 		Game game = new Game();
-		string gameId;
+		GameId gameId;
 		GameStatus gameStatus = GameStatus.AddingPlayers;
 
 		await PrepareNetwork(Uri);
@@ -431,11 +431,11 @@ internal class BattleshipGame
 		return player;
 	}
 
-	private async Task<string> PlayVsComputer(AuthPlayer player, string computerPlayerName = "Computer", GameType gameType = GameType.Classic)
+	private async Task<GameId> PlayVsComputer(AuthPlayer player, string computerPlayerName = "Computer", GameType gameType = GameType.Classic)
 	{
-		string? gameId;
+		GameId? gameId;
 		try {
-			gameId = await _hubConnection.InvokeAsync<string>("StartGameVsComputer", player, computerPlayerName, gameType);
+			gameId = await _hubConnection.InvokeAsync<GameId>("StartGameVsComputer", player, computerPlayerName, gameType);
 		}
 		catch (Exception ex) {
 			Debug.WriteLine($"Error in {nameof(PlayVsComputer)}: {ex.Message}");
