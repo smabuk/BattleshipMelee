@@ -21,12 +21,12 @@ internal class GameHub : Hub
 
 	public AuthPlayer RegisterPlayer(string name)
 	{
-		return (AuthPlayer)_gameService.AddPlayer(Context.ConnectionId, name);
+		return (AuthPlayer)_gameService.AddPlayer(new(Context.ConnectionId), name);
 	}
 
 	public void UnRegisterPlayer(AuthPlayer privatePlayer)
 	{
-		_gameService.RemovePlayer(Context.ConnectionId, privatePlayer.Name);
+		_gameService.RemovePlayer(new(Context.ConnectionId), privatePlayer.Name);
 	}
 
 	public async Task<GameId?> StartGameVsComputer(AuthPlayer player, string computerPlayerName = "Computer", GameType gameType = GameType.Classic)

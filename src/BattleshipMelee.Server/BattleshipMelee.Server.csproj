@@ -4,7 +4,6 @@
 		<TargetFramework>net7.0</TargetFramework>
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
-		<LangVersion>preview</LangVersion>
 		<UserSecretsId>dd531375-87c6-4072-84db-5c03c4f369c2</UserSecretsId>
 		<DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
 	</PropertyGroup>
@@ -13,6 +12,10 @@
 		<PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="7.0.5" />
 		<PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.18.1" />
 		<PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="StronglyTypedId" Version="1.0.0-beta06" PrivateAsets="all" and="" ExcludeAssets="runtime"/>
 	</ItemGroup>
 
 	<ItemGroup>
