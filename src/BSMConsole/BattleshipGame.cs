@@ -111,10 +111,10 @@ internal class BattleshipGame
 
 		opponent = await _hubConnection.InvokeAsync<ComputerPlayer>("FindComputerOpponent", player, gameId);
 
-		List<Ship> ships = new();
+		List<Ship> ships = Game.GameShips(GameType);
 		if (RandomShipPlacement is false) {
 			DisplayEmptyGrid(player, game.BoardSize);
-			ships = PlaceShipsForNetworkPlay(Game.GameShips(GameType));
+			ships = PlaceShipsForNetworkPlay(ships);
 			if (ships is null) {
 				gameStatus = GameStatus.Abandoned;
 				DisplayStatus(gameStatus);
