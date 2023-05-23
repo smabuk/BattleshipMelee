@@ -10,6 +10,7 @@ internal sealed class BattleshipCommand : Command<BattleshipCommand.Settings> {
 			RandomShipPlacement = settings.RandomShipPlacement,
 			NetworkPlay         = settings.NetworkPlay,
 			Uri                 = $"https://{settings.Host}:{settings.Port}",
+			Theme               = settings.Theme,
 		};
 
 		if (settings.NetworkPlay) {
@@ -58,6 +59,17 @@ internal sealed class BattleshipCommand : Command<BattleshipCommand.Settings> {
 		[CommandOption("--port")]
 		public int? Port { get; init; }
 
+		[Description("Battleship game type - classic, melee, or bigbang")]
+		[CommandOption("-t|--theme")]
+		public string? ThemeName { get; init; } = "default";
+
+		public ITheme Theme => ThemeName?.ToLower() switch
+		{
+			"default" => new DefaultTheme(),
+			"emoji" => new EmojiTheme(),
+			"animals" => new AnimalsTheme(),
+			_ => throw new NotImplementedException(),
+		};
 
 		public override ValidationResult Validate()
 		{

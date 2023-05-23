@@ -6,7 +6,7 @@
     },
     "BSMConsole BigBang with random placement": {
       "commandName": "Project",
-      "commandLineArgs": "bigbang --random"
+      "commandLineArgs": "bigbang --random --theme animals"
     },
     "BSMConsole Networked": {
       "commandName": "Project",
