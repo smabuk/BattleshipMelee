@@ -1,6 +1,4 @@
-﻿using System.Text;
-
-using BattleshipEngine;
+﻿using BattleshipEngine;
 
 namespace BSMConsole;
 

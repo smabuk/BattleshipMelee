@@ -1,6 +1,4 @@
-﻿using BattleshipEngine;
-
-namespace BattleshipMelee.Server.Services;
+﻿namespace BattleshipMelee.Server.Services;
 
 public class GameService
 {

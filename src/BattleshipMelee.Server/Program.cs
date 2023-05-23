@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -33,7 +34,7 @@ app.MapGet("/games", Ok<List<Game>> (GameService gameService) =>
 	return TypedResults.Ok(gameService.Games.Values.ToList());
 });
 
-app.MapGet("/leaderboard/{gameId}", Results<Ok<List<LeaderboardEntry>>, NotFound> (GameId gameId, GameService gameService) =>
+app.MapGet("/leaderboard/{gameId}", Results<Ok<List<LeaderboardEntry>>, NotFound> ([FromRoute] GameId gameId, GameService gameService) =>
 {
 	if (gameService.Games.TryGetValue(gameId, out Game? game)) {
 		return TypedResults.Ok(game.LeaderBoard().ToList());

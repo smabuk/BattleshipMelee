@@ -31,12 +31,12 @@ internal class GameHub : Hub
 
 	public async Task<GameId?> StartGameVsComputer(AuthPlayer player, string computerPlayerName = "Computer", GameType gameType = GameType.Classic)
 	{
-		GameId gameId = _gameService.StartGameWithComputer(player, computerPlayerName, gameType) ?? "";
-		if (gameId != "") {
-			List<Player> players = _gameService.FindOpponents(player, gameId);
+		GameId? gameId = _gameService.StartGameWithComputer(player, computerPlayerName, gameType);
+		if (gameId is not null) {
+			List<Player> players = _gameService.FindOpponents(player, gameId ?? default);
 			await Clients.Client(Context.ConnectionId).SendAsync("Opponents", players);
 
-			await Groups.AddToGroupAsync(Context.ConnectionId, gameId);
+			await Groups.AddToGroupAsync(Context.ConnectionId, gameId.ToString() ?? throw new ApplicationException($"{gameId} shot not be null"));
 			await Clients.Client(Context.ConnectionId).SendAsync("StartGame", gameId);
 		}
 		return gameId;

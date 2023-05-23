@@ -8,6 +8,6 @@ global using BattleshipMelee.Server.Hubs;
 global using BattleshipMelee.Server.Models;
 global using BattleshipMelee.Server.Services;
 
-global using GameId       = string;
+//global using GameId = string;
 global using PlayerId     = string;
 global using ConnectionId = string;
