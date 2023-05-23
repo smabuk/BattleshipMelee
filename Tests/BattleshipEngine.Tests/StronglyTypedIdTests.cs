@@ -11,6 +11,10 @@ public class StronglyTypedIdTests
 		GameId gameId2 = new GameId();
 
 		Assert.Equal(Guid.Empty, gameId.Value);
+		
+		GameId? nullableGameId = GameId.Generate();
+		gameId2 = (GameId)nullableGameId;
+		Assert.Equal(nullableGameId, gameId2);
 
 		gameId = GameId.Generate();
 		Assert.NotEqual(Guid.Empty, gameId.Value);

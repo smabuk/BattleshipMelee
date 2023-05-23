@@ -445,7 +445,7 @@ internal class BattleshipGame
 		}
 
 		Debug.WriteLine($"Game Id: {gameId}");
-		return gameId;
+		return (GameId)gameId;
 	}
 
 	private static int PrepareGameSpace()

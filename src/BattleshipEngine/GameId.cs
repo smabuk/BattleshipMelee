@@ -1,14 +1,10 @@
-﻿using System.Diagnostics;
-
-using StronglyTypedIds;
-
-namespace BattleshipEngine;
+﻿namespace BattleshipEngine;
 
 [StronglyTypedId(converters: StronglyTypedIdConverter.TypeConverter | StronglyTypedIdConverter.SystemTextJson)]
 [DebuggerDisplay($"{{{nameof(GetDebuggerDisplay)}(),nq}}")]
 public partial struct GameId : IParsable<GameId>
 {
-	public static GameId Generate() => new GameId(Guid.NewGuid());
+	public static GameId Generate() => new(Guid.NewGuid());
 
 	public static GameId Parse(string s, IFormatProvider? provider) => new(Guid.Parse(s));
 

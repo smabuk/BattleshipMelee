@@ -27,7 +27,7 @@ public class PlayerTests
 		AuthPlayer player1 = new AuthPlayer(privatePlayer.Name);
 		Assert.False(privatePlayer.IsUserWhoTheySayTheyAre(player1));
 
-		AuthPlayer player2 = privatePlayer with { PrivateId = Guid.NewGuid().ToString() };
+		AuthPlayer player2 = privatePlayer with { PrivateId = PlayerId.Generate() };
 		Assert.False(privatePlayer.IsUserWhoTheySayTheyAre(player2));
 
 		Player player3 = Player.PublicPlayer(privatePlayer);
