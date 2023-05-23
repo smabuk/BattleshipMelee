@@ -140,7 +140,6 @@ internal class BattleshipGame
 			_attackResults.AddRange(attackResults);
 			DisplayShotsOnGrid(opponent);
 			DisplayShotsOnGrid(player, RIGHT_GRID);
-			//Console.SetCursorPosition(INPUT_COL, _topRow + INPUT_ROW);
 		});
 
 		if (gameStatus is GameStatus.Attacking) {
@@ -153,9 +152,6 @@ internal class BattleshipGame
 				if (TryGetCoordinateFromUser(_topRow + INPUT_ROW, out Coordinate coordinate)) {
 					List<AttackResult> attackResults = await _hubConnection
 						.InvokeAsync<List<AttackResult>>("Fire", player, gameId, coordinate);
-					//DisplayBoards(player, opponent, myFleet.Values, game.BoardSize);
-					//DisplayShotsOnGrid(opponent);
-					//DisplayShotsOnGrid(player, RIGHT_GRID);
 				} else {
 					gameStatus = GameStatus.Abandoned;
 					break;

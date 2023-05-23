@@ -64,7 +64,9 @@ public record Game(GameType GameType = GameType.Classic)
 		Player playerToAttack = Opponent(player);
 
 		if (_shots[player.Id].Any(s => s.AttackCoordinate == attackCoordinate)) {
-			return new(attackCoordinate, AttackResultType.AlreadyAttacked) { TargetedPlayerId = playerToAttack.Id };
+			AttackResult result = new(attackCoordinate, AttackResultType.AlreadyAttacked) { TargetedPlayerId = playerToAttack.Id };
+			_shots[player.Id].Add(result);
+			return result;
 		} else {
 			AttackResult result = _boards[playerToAttack.Id].Attack(attackCoordinate) with { TargetedPlayerId = playerToAttack.Id };
 			_shots[player.Id].Add(result);

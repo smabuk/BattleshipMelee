@@ -4,11 +4,11 @@ public class GameTests
 {
 	readonly List<Ship> shipList = new()
 		{
-			new(ShipType.Cruiser,    "A1", Orientation.Horizontal),
-			new(ShipType.Battleship, "B1", Orientation.Horizontal),
-			new(ShipType.Submarine,  "C1", Orientation.Horizontal),
-			new(ShipType.Destroyer,  "D1", Orientation.Horizontal),
-			new(ShipType.AircraftCarrier,    "E5", Orientation.Vertical)
+			new(ShipType.Cruiser,         "A1", Orientation.Horizontal),
+			new(ShipType.Battleship,      "B1", Orientation.Horizontal),
+			new(ShipType.Submarine,       "C1", Orientation.Horizontal),
+			new(ShipType.Destroyer,       "D1", Orientation.Horizontal),
+			new(ShipType.AircraftCarrier, "E5", Orientation.Vertical)
 		};
 
 	[Fact]
@@ -61,6 +61,9 @@ public class GameTests
 		List<LeaderboardEntry> leaderboard = game.LeaderBoard().ToList();
 		Assert.Equal(1, leaderboard.Single(s => s.Name == computerPlayer2.Name).Position);
 		Assert.Equal(2, leaderboard.Single(s => s.Name == privatePlayer1.Name).Position);
+
+		Assert.Equal( 148, leaderboard.Single(s => s.Name == computerPlayer2.Name).Score);
+		Assert.Equal(-100, leaderboard.Single(s => s.Name == privatePlayer1.Name).Score);
 	}
 
 	[Fact]
