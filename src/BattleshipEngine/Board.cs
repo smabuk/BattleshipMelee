@@ -48,7 +48,12 @@ public record Board(int BoardSize)
 
 	public static bool ValidateShipPositions(IEnumerable<Ship> ships)
 	{
-		return !ships.SelectMany(ship => ship.Segments.Keys).GroupBy(c => c).Any(c => c.Count() > 1);
+		List<Coordinate> segments = ships.SelectMany(ship => ship.Segments.Keys).ToList();
+		if (segments.Any(c => c.Col < 1 || c.Col > 10 || c.Row < 1 || c.Row > 10 )) {
+			return false;
+		}
+
+		return !segments.GroupBy(seg => seg).Any(c => c.Count() > 1);
 	}
 
 }

@@ -52,13 +52,21 @@ internal class BattleshipGame
 		gameStatus = GameStatus.PlacingShips;
 		DisplayStatus(gameStatus);
 
-		if (RandomPlacement) {
-			game.PlaceShips(player, doItForMe: true);
-			_myFleet = game.Fleet(player).ToDictionary(ship => ship.Type, ship => ship);
-		} else {
+		List<Ship> ships = Game.GameShips(GameType);
+		if (RandomPlacement is false) {
 			DisplayEmptyGrid(player, game.BoardSize);
-			PlaceShips(game);
+			ships = PlaceShips(ships);
+			if (ships is null) {
+				gameStatus = GameStatus.Abandoned;
+				DisplayStatus(gameStatus);
+				Console.SetCursorPosition(0, _topRow + GAME_HEIGHT - 2);
+				Console.WriteLine();
+				Console.WriteLine();
+				return;
+			}
 		}
+		game.PlaceShips(player, ships, doItForMe: RandomPlacement);
+		_myFleet = game.Fleet(player).ToDictionary(ship => ship.Type, ship => ship);
 
 		if (game.AreFleetsReady) {
 			gameStatus = GameStatus.Attacking;
@@ -137,7 +145,7 @@ internal class BattleshipGame
 		List<Ship> ships = Game.GameShips(GameType);
 		if (RandomPlacement is false) {
 			DisplayEmptyGrid(player, game.BoardSize);
-			ships = PlaceShipsForNetworkPlay(ships);
+			ships = PlaceShips(ships);
 			if (ships is null) {
 				gameStatus = GameStatus.Abandoned;
 				DisplayStatus(gameStatus);
@@ -176,32 +184,7 @@ internal class BattleshipGame
 		DisplayFinalSummary(leaderboard);
 	}
 
-	private void PlaceShips(Game game)
-	{
-		_myFleet = Game.GameShips(GameType).ToDictionary(ship => ship.Type);
-
-		DisplayShipsOnGrid(_myFleet.Values);
-
-		List<Ship> fleet = _myFleet.Values.Where(ship => ship.IsPositioned == false).ToList();
-
-		foreach (Ship ship in fleet) {
-			Ship newShip;
-			do {
-				DisplayShipsOnGrid(_myFleet.Values);
-				DisplayStatus(GameStatus.PlacingShips, $"[{Theme.Colour}]  {Theme.GetShipNames(ship.Type)} ({ship.NoOfSegments} segments) [/]");
-				(Orientation Orientation, Coordinate Coordinate)? result = GetShipPlacementFromUser(_topRow + INPUT_ROW, Theme.Colour);
-
-				if (!result.HasValue) {
-					return;
-				}
-				newShip = new(ship.Type, result.Value.Coordinate, result.Value.Orientation);
-
-			} while (!game.PlaceShip(player, newShip));
-			_myFleet[newShip.Type] = newShip;
-		}
-	}
-
-	private List<Ship> PlaceShipsForNetworkPlay(IEnumerable<Ship> myFleet)
+	private List<Ship> PlaceShips(IEnumerable<Ship> myFleet)
 	{
 		List<Ship> fleet = myFleet.ToList();
 		List<Ship> newFleet = myFleet.ToList();
