@@ -33,6 +33,19 @@ internal class DefaultTheme : ITheme
 			? shipType.ToString()[0].ToString().ToUpperInvariant()
 			: shipType.ToString()[0].ToString().ToLowerInvariant();
 	}
+
+	public string GetStatusMessages(GameStatus gameStatus)
+	{
+		return gameStatus switch
+		{
+			GameStatus.PlacingShips  => "Place your ships",
+			GameStatus.AddingPlayers => "Adding players",
+			GameStatus.Attacking     => "Attack those ships",
+			GameStatus.GameOver      => "GAME OVER",
+			GameStatus.Abandoned     => "Abandoned",
+			_ => ""
+		};
+	}
 }
 
 internal class EmojiTheme : ITheme
@@ -55,19 +68,51 @@ internal class EmojiTheme : ITheme
 	public string SunkColour   => ITheme.GetColour(SunkFgColour,   BackgroundColour);
 	public string WinnerColour => ITheme.GetColour(WinnerFgColour, BackgroundColour);
 
-	public string Empty => ":water_wave:";
-	public string Miss  => ":water_wave:";
+	public string Empty => ".";
+	public string Miss  => "🌊";
+
+	public bool CanIDisplayProperly() => ITheme.CanIDisplayEmojiProperly();
 
 	public string GetShipNames(ShipType shipType)
 	{
-		return shipType.ToFriendlyString();
+		return shipType switch
+		{
+			ShipType.AircraftCarrier    => "Yachts",
+			ShipType.Battleship         => "Ferry",
+			ShipType.Cruiser            => "Cruise liner",
+			ShipType.Destroyer          => "Surfers",
+			ShipType.RomulanBattleBagel => "Ufos",
+			ShipType.Submarine          => "Rowing boat",
+			_ => throw new NotImplementedException(),
+		};
 	}
 
-	public string GetShipShape(ShipType shipType, bool IsSunk = false)
+	public string GetShipShape(ShipType shipType, bool IsSunk)
 	{
-		return IsSunk
-			? shipType.ToString()[0].ToString().ToUpperInvariant()
-			: shipType.ToString()[0].ToString().ToLowerInvariant();
+		return shipType switch
+		{
+			_ when IsSunk => "💣",
+			ShipType.AircraftCarrier    => "⛵",
+			ShipType.Battleship         => "⛴️",
+			ShipType.Cruiser            => "🛳️",
+			ShipType.Destroyer          => "🏄",
+			ShipType.RomulanBattleBagel => "🛸",
+			ShipType.Submarine          => "🚣",
+			_ => throw new NotImplementedException(),
+		};
+	}
+
+	public string GetStatusMessages(GameStatus gameStatus)
+	{
+		return gameStatus switch
+		{
+			GameStatus.PlacingShips  => "Place your ships",
+			GameStatus.AddingPlayers => "Adding players",
+			GameStatus.Attacking     => "Attack those ships",
+			GameStatus.GameOver      => "GAME OVER",
+			GameStatus.Abandoned     => "Abandoned",
+			_ => ""
+		};
 	}
 }
 
@@ -102,6 +147,8 @@ internal class AnimalsTheme : ITheme
 	//	_ => ":deciduous_tree:",
 	//};
 
+	public bool CanIDisplayProperly() => ITheme.CanIDisplayEmojiProperly();
+
 	public string GetShipNames(ShipType shipType)
 	{
 		return shipType switch
@@ -135,6 +182,21 @@ internal class AnimalsTheme : ITheme
 			_ => throw new NotImplementedException(),
 		};
 	}
+
+	public string GetStatusMessages(GameStatus gameStatus)
+	{
+		return gameStatus switch
+		{
+			GameStatus.PlacingShips  => "Place your animals",
+			GameStatus.AddingPlayers => "Adding players",
+			GameStatus.Attacking     => "Look for those animals",
+			GameStatus.GameOver      => "GAME OVER",
+			GameStatus.Abandoned     => "Abandoned",
+			_ => ""
+		};
+	}
 }
+
+
 
 

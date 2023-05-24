@@ -4,13 +4,23 @@
 internal sealed class BattleshipCommand : Command<BattleshipCommand.Settings> {
 
 	public override int Execute([NotNull] CommandContext context, [NotNull] Settings settings) {
+		if (settings.Theme.CanIDisplayProperly() is false) 
+		{
+			Console.WriteLine();
+			Console.WriteLine($"""This game can not be played with the "{settings.Theme.Name}" theme.""");
+			Console.WriteLine();
+			Console.WriteLine($"""If you are on Windows try chamging to Unicode by issuing the command:""");
+			Console.WriteLine($"""          chcp 65001.""");
+			return 1;
+		}
+
 		BattleshipGame battleshipGame = new() {
-			GameType            = settings.GameType,
-			PlayerName          = settings.PlayerName,
+			GameType        = settings.GameType,
+			PlayerName      = settings.PlayerName,
 			RandomPlacement = settings.RandomShipPlacement,
-			NetworkPlay         = settings.NetworkPlay,
-			Uri                 = $"https://{settings.Host}:{settings.Port}",
-			Theme               = settings.Theme,
+			NetworkPlay     = settings.NetworkPlay,
+			Uri             = $"https://{settings.Host}:{settings.Port}",
+			Theme           = settings.Theme,
 		};
 
 		if (settings.NetworkPlay) {

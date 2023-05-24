@@ -16,8 +16,8 @@ internal class BattleshipGame
 	private const int CLEAR_WIDTH = 56;
 	private const int GAME_HEIGHT = 22;
 	private const int GAME_WIDTH  = 66;
-	private const int BOARD_ROW   = 2;
-	private const int LEFT_GRID   = 4;
+	private const int BOARD_ROW   =  2;
+	private const int LEFT_GRID   =  4;
 	private const int RIGHT_GRID  = 34;
 	private const int INPUT_COL   = LEFT_GRID;
 	private const int INPUT_ROW   = 18;
@@ -273,34 +273,30 @@ internal class BattleshipGame
 
 		Console.SetCursorPosition(offsetCol, offsetRow + 1);
 		AnsiConsole.Markup($"[{Theme.Colour}]     1 2 3 4 5 6 7 8 9 10 [/]");
+
 		Console.SetCursorPosition(offsetCol, offsetRow + 2);
 		AnsiConsole.Markup($"[{Theme.Colour}]   ┌─────────────────────┐[/]");
+
 		string empty = string.Join(" ", Enumerable.Repeat($"{Theme.Empty}", boardSize));
 		for (int row = 0; row < boardSize; row++) {
 			Console.SetCursorPosition(offsetCol, offsetRow + 3 + row);
 			AnsiConsole.Markup($"[{Theme.Colour}]{Convert.ToChar(row + 'A'),2} │ [/][{Theme.EmptyColour}]{empty}[/][{Theme.Colour}] │[/]");
 		}
+
 		Console.SetCursorPosition(offsetCol, offsetRow + 13);
 		AnsiConsole.Markup($"[{Theme.Colour}]   └─────────────────────┘[/]");
 	}
 
 	private void DisplayStatus(GameStatus status, string markupMessage = "")
 	{
-		string message = status switch
-		{
-			GameStatus.PlacingShips  => "Place your ships",
-			GameStatus.AddingPlayers => "Adding players",
-			GameStatus.Attacking     => "Attack those ships",
-			GameStatus.GameOver      => "GAME OVER",
-			GameStatus.Abandoned     => "Abandoned",
-			_                        => ""
-		};
+		string message = Theme.GetStatusMessages(status);
 
 		lock (consoleDisplayLock) {
 			(int currCol, int currRow) = Console.GetCursorPosition();
 
 			Console.SetCursorPosition(STATUS_COL, _topRow + STATUS_ROW);
 			AnsiConsole.Markup($"[{Theme.Colour}]{(new string(' ', CLEAR_WIDTH))}[/]");
+
 			Console.SetCursorPosition(STATUS_COL, _topRow + STATUS_ROW);
 			AnsiConsole.Markup($"[{ITheme.GetColour("yellow", Theme.BackgroundColour)}]     {message,-17}[/][{Theme.Colour}]{markupMessage}[/]");
 			
@@ -317,7 +313,7 @@ internal class BattleshipGame
 			Console.WriteLine();
 			Console.WriteLine();
 			AnsiConsole.MarkupLine($"[{Theme.Colour}]         Results[/]");
-			AnsiConsole.MarkupLineInterpolated($"[{Theme.Colour}]  [bold]Pos Score  Player Name         [/][/]");
+			AnsiConsole.MarkupLine($"[{Theme.Colour}]  [bold]Pos Score  Player Name         [/][/]");
 			foreach (LeaderboardEntry playerWithScore in leaderboard) {
 				AnsiConsole.MarkupLineInterpolated($"[{(playerWithScore.Position == 1 ? $"{Theme.WinnerColour}" : $"{Theme.Colour}")}]   {playerWithScore.Position}   {playerWithScore.Score,3}   {playerWithScore.Name,-20}[/]");
 			}
@@ -327,6 +323,7 @@ internal class BattleshipGame
 	private void DisplayShotsOnGrid(Player player, int offsetCol = 4)
 	{
 		int offsetRow = _topRow + BOARD_ROW;
+		
 		IEnumerable<AttackResult> shots = _attackResults.Where(s => s.TargetedPlayerId == player.Id);
 
 		lock (consoleDisplayLock) {
@@ -391,17 +388,19 @@ internal class BattleshipGame
 	private static bool TryGetCoordinateFromUser(int inputRow, string colour, out Coordinate coordinate)
 	{
 		string currentCoordinateString = "";
+		coordinate = new(0, 0);
 
 		while (true) {
 			ConsoleKey key = DisplayAndGetInput(INPUT_COL, inputRow, CLEAR_WIDTH, colour, $"[bold]{currentCoordinateString}[/]", "     Target coordinates: ");
-			switch (key) {
-				case ConsoleKey.Escape:
-					coordinate = new(0, 0);
-					return false;
-				case ConsoleKey.Enter when currentCoordinateString.Length > 1:
-					coordinate = currentCoordinateString;
-					return true;
 
+			if (key is ConsoleKey.Escape) {
+				return false;
+			} else if (key is ConsoleKey.Enter && currentCoordinateString.Length > 1) {
+				coordinate = Coordinate.Parse(currentCoordinateString);
+				return true;
+			}
+
+			switch (key) {
 				case ConsoleKey.Backspace when currentCoordinateString.Length > 0:
 					currentCoordinateString = currentCoordinateString[..^1];
 					break;
@@ -423,19 +422,21 @@ internal class BattleshipGame
 
 	private static (Orientation Orientation, Coordinate Coordinate)? GetShipPlacementFromUser(int inputRow, string colour)
 	{
+		Coordinate coordinate = new(0, 0);
 		string currentCoordinateString = "";
 		Orientation orientation = Orientation.Horizontal;
 
 		while (true) {
 			ConsoleKey key = DisplayAndGetInput(INPUT_COL, inputRow, CLEAR_WIDTH, colour, $"[bold]{currentCoordinateString}[/]", $" Position ({orientation,10}): ");
-			switch (key) {
-				case ConsoleKey.Escape:
-					return null;
-				case ConsoleKey.Enter when currentCoordinateString.Length > 1: {
-						Coordinate coordinate = currentCoordinateString;
-						return (orientation, coordinate);
-					}
 
+			if (key is ConsoleKey.Escape) {
+				return null;
+			} else if (key is ConsoleKey.Enter && currentCoordinateString.Length > 1) {
+				coordinate = Coordinate.Parse(currentCoordinateString);
+				return (orientation, coordinate);
+			}
+
+			switch (key) {
 				case ConsoleKey.Backspace when currentCoordinateString.Length > 0:
 					currentCoordinateString = currentCoordinateString[..^1];
 					break;
