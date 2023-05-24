@@ -1,6 +1,6 @@
 ﻿namespace BattleshipEngine;
 
-public abstract record Player(string Name)
+public record Player(string Name)
 {
 	public PlayerId Id { get; set; } = PlayerId.Generate();
 

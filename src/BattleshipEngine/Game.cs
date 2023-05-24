@@ -115,7 +115,7 @@ public record Game(GameType GameType = GameType.Classic)
 			Player player = Player.PublicPlayer(privatePlayer);
 			int score = 0;
 			foreach (AttackResult shot in _shots[player.Id]) {
-				score += shot.HitOrMiss switch
+				score += shot.AttackResultType switch
 				{
 					AttackResultType.Hit => 2,
 					AttackResultType.Miss => 0,

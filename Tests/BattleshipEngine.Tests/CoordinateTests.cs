@@ -3,10 +3,10 @@
 public sealed class CoordinateTests
 {
 	[Theory]
-	[InlineData("A1", 1, 1)]
-	[InlineData("A2", 1, 2)]
-	[InlineData("A3", 1, 3)]
-	[InlineData("J3", 10, 3)]
+	[InlineData("A1",   1,  1)]
+	[InlineData("A2",   1,  2)]
+	[InlineData("A3",   1,  3)]
+	[InlineData("J3",  10,  3)]
 	[InlineData("J10", 10, 10)]
 	public void ConvertFromCoordinateToString(string expected, int row, int col)
 	{
@@ -15,12 +15,12 @@ public sealed class CoordinateTests
 	}
 
 	[Theory]
-	[InlineData("A1", 1, 1)]
-	[InlineData("A2", 1, 2)]
-	[InlineData("A3", 1, 3)]
-	[InlineData("J3", 10, 3)]
+	[InlineData("A1",   1,  1)]
+	[InlineData("A2",   1 , 2)]
+	[InlineData("A3",   1,  3)]
+	[InlineData("J3",  10,  3)]
 	[InlineData("J10", 10, 10)]
-	[InlineData("a1", 1, 1)]
+	[InlineData("a1",   1,  1)]
 	[InlineData("j10", 10, 10)]
 	public void ConvertFromStringToCoordinate(string input, int row, int col)
 	{
@@ -30,10 +30,10 @@ public sealed class CoordinateTests
 	}
 
 	[Theory]
-	[InlineData(1, 1)]
-	[InlineData(1, 2)]
-	[InlineData(1, 3)]
-	[InlineData(10, 3)]
+	[InlineData( 1,  1)]
+	[InlineData( 1,  2)]
+	[InlineData( 1,  3)]
+	[InlineData(10,  3)]
 	[InlineData(10, 10)]
 	public void ConvertFromTupleToCoordinate(int row, int col)
 	{
@@ -45,12 +45,12 @@ public sealed class CoordinateTests
 	}
 
 	[Theory]
-	[InlineData("A1", 1, 1)]
-	[InlineData("A2", 1, 2)]
-	[InlineData("A3", 1, 3)]
-	[InlineData("J3", 10, 3)]
+	[InlineData("A1",   1,  1)]
+	[InlineData("A2",   1,  2)]
+	[InlineData("A3",   1,  3)]
+	[InlineData("J3",  10,  3)]
 	[InlineData("J10", 10, 10)]
-	[InlineData("a1", 1, 1)]
+	[InlineData("a1",   1,  1)]
 	[InlineData("j10", 10, 10)]
 	public void CreateCoordinateFromString(string input, int row, int col)
 	{
@@ -69,6 +69,33 @@ public sealed class CoordinateTests
 	public void IndexFromCoordinate(int row, int col, int expected)
 	{
 		int actual = new Coordinate(row, col).BoardIndex();
+		Assert.Equal(expected, actual);
+	}
+
+	[Theory]
+	[InlineData( 1,  1)]
+	[InlineData(-1,  2, false)]
+	[InlineData(10, 10)]
+	[InlineData(11, 11, false)]
+	public void SerializeCoordinate(int row, int col, bool isValid = true)
+	{
+		Coordinate coordinate = new Coordinate(row, col);
+		string expected = $$"""{"Row":{{row}},"Col":{{col}},"IsValid":{{isValid.ToString().ToLowerInvariant()}}}""";
+		string actual = JsonSerializer.Serialize(coordinate);
+		Assert.Equal(expected, actual);
+	}
+
+	[Theory]
+	[InlineData( 1,  1)]
+	[InlineData(10, 10)]
+	[InlineData(-1,  2, false)]
+	[InlineData( 1, -2, false)]
+	[InlineData(11, 11, false)]
+	public void DeserializeCoordinate(int row, int col, bool isValid = true)
+	{
+		Coordinate expected = new Coordinate(row, col);
+		string json = $$"""{"Row":{{row}},"Col":{{col}},"IsValid":{{isValid.ToString().ToLowerInvariant()}}}""";
+		Coordinate? actual = JsonSerializer.Deserialize<Coordinate>(json);
 		Assert.Equal(expected, actual);
 	}
 

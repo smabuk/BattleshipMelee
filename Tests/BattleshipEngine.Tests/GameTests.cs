@@ -36,11 +36,11 @@ public class GameTests
 
 		AttackResult attackResult;
 		attackResult = game.Fire(computerPlayer2, "A1");
-		Assert.Equal(AttackResultType.Hit, attackResult.HitOrMiss);
+		Assert.Equal(AttackResultType.Hit, attackResult.AttackResultType);
 		attackResult = game.Fire(computerPlayer2, "A1");
-		Assert.Equal(AttackResultType.AlreadyAttacked, attackResult.HitOrMiss);
+		Assert.Equal(AttackResultType.AlreadyAttacked, attackResult.AttackResultType);
 		attackResult = game.Fire(computerPlayer2, "J6");
-		Assert.Equal(AttackResultType.Miss, attackResult.HitOrMiss);
+		Assert.Equal(AttackResultType.Miss, attackResult.AttackResultType);
 
 		Assert.False(game.GameOver);
 

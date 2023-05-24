@@ -36,7 +36,7 @@ public record Board(int BoardSize)
 	{
 		foreach (Ship ship in Fleet) {
 			AttackResult result = ship.Attack(attackCoordinate);
-			if (result.HitOrMiss is AttackResultType.Hit or AttackResultType.HitAndSunk) {
+			if (result.AttackResultType is AttackResultType.Hit or AttackResultType.HitAndSunk) {
 				return result;
 			}
 		}

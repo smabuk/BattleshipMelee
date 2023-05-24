@@ -314,19 +314,19 @@ internal class BattleshipGame
 
 			foreach (AttackResult shot in shots) {
 				Console.SetCursorPosition(offsetCol + 3 + (shot.AttackCoordinate.Col * 2), offsetRow + 2 + shot.AttackCoordinate.Row);
-				bool sunk = shots.Any(s => s.ShipType == shot.ShipType && s.HitOrMiss == AttackResultType.HitAndSunk);
-				if (shot.HitOrMiss is AttackResultType.Miss or AttackResultType.Hit or AttackResultType.HitAndSunk) {
+				bool sunk = shots.Any(s => s.ShipType == shot.ShipType && s.AttackResultType == AttackResultType.HitAndSunk);
+				if (shot.AttackResultType is AttackResultType.Miss or AttackResultType.Hit or AttackResultType.HitAndSunk) {
 					ShipType shipType = shot.ShipType ?? ShipType.AircraftCarrier;
-					string hitormiss = shot.HitOrMiss switch
+					string AttackResultType = shot.AttackResultType switch
 					{
 						AttackResultType.Miss => $"[{Theme.MissColour}]{Theme.Miss}[/]",
 						AttackResultType.Hit => sunk ? $"[{Theme.SunkColour}]{Theme.GetShipShape(shipType, true).ToUpper()}[/]" : $"[{Theme.HitColour}]{Theme.GetShipShape(shipType, false)}[/]",
 						AttackResultType.HitAndSunk => $"[{Theme.SunkColour}]{Theme.GetShipShape(shipType, true).ToUpper()}[/]",
-						AttackResultType.AlreadyAttacked => throw new ArgumentOutOfRangeException(nameof(shot.HitOrMiss)),
-						AttackResultType.InvalidPosition => throw new ArgumentOutOfRangeException(nameof(shot.HitOrMiss)),
-						_ => throw new ArgumentOutOfRangeException(nameof(shot.HitOrMiss)),
+						AttackResultType.AlreadyAttacked => throw new ArgumentOutOfRangeException(nameof(shot.AttackResultType)),
+						AttackResultType.InvalidPosition => throw new ArgumentOutOfRangeException(nameof(shot.AttackResultType)),
+						_ => throw new ArgumentOutOfRangeException(nameof(shot.AttackResultType)),
 					};
-					AnsiConsole.Markup(hitormiss);
+					AnsiConsole.Markup(AttackResultType);
 				}
 			}
 
@@ -344,12 +344,12 @@ internal class BattleshipGame
 			if (ships is not null) {
 				foreach (Ship ship in ships) {
 					foreach (ShipSegment segment in ship.Segments.Values) {
-						string hitormiss = segment.IsHit
+						string AttackResultType = segment.IsHit
 							? $"[{Theme.HitColour}]{Theme.GetShipShape(ship.Type, ship.IsSunk)}[/]"
 							: $"[{Theme.Colour}]{Theme.GetShipShape(ship.Type, false)}[/]";
-						hitormiss = ship.IsSunk ? hitormiss.ToUpper() : hitormiss;
+						AttackResultType = ship.IsSunk ? AttackResultType.ToUpper() : AttackResultType;
 						Console.SetCursorPosition(offsetCol + 3 + (segment.Coordinate.Col * 2), offsetRow + 2 + segment.Coordinate.Row);
-						AnsiConsole.Markup(hitormiss);
+						AnsiConsole.Markup(AttackResultType);
 					}
 				}
 			}
