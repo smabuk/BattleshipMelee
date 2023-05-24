@@ -26,8 +26,6 @@ internal class BattleshipGame
 
 	static object consoleDisplayLock = new();
 	private int _topRow = int.MinValue;
-
-	private HubConnection _hubConnection = default!;
 	
 	private readonly List<AttackResult> _attackResults = new();
 	private Dictionary<ShipType, Ship> _myFleet = new();
@@ -92,26 +90,41 @@ internal class BattleshipGame
 		GameId gameId;
 		GameStatus gameStatus = GameStatus.AddingPlayers;
 
-		await PrepareNetwork(Uri);
+		await using HubConnection hubConnection = new HubConnectionBuilder()
+			.WithUrl($"{Uri}/bsm")
+			.WithAutomaticReconnect()
+			.Build();
+
+		await hubConnection.StartAsync();
+
 
 		//_hubConnection.On<Player>("Opponents", (player) => {
 		//	Debug.WriteLine($"Opponent: {player}");
 		//	opponent = player is ComputerPlayer p ? p : throw new ApplicationException("No opponents found.");
 		//});
-		
-		player = await RegisterPlayer(PlayerName);
+
+		try {
+			player = await hubConnection.InvokeAsync<AuthPlayer>("RegisterPlayer", PlayerName);
+		}
+		catch (Exception) {
+			throw;
+		}
 
 		_topRow = PrepareGameSpace();
 
 		DisplayGame();
 
-		_hubConnection.On<GameId>("StartGame", (gId) => { gameId = gId; });
-		_hubConnection.On<GameStatus>("GameStatusChange", (gStat) => { gameStatus = gStat; DisplayStatus(gameStatus); });
+		hubConnection.On<GameId>("StartGame", (gId) => { gameId = gId; });
+		hubConnection.On<GameStatus>("GameStatusChange", (gStat) => { gameStatus = gStat; DisplayStatus(gameStatus); });
 
-		
-		gameId = await PlayVsComputer(player, gameType: GameType);
 
-		opponent = await _hubConnection.InvokeAsync<ComputerPlayer>("FindComputerOpponent", player, gameId);
+		try {
+			gameId = await hubConnection.InvokeAsync<GameId>("StartGameVsComputer", player, "Computer", game.GameType);
+			opponent = await hubConnection.InvokeAsync<ComputerPlayer>("FindComputerOpponent");
+		}
+		catch (Exception) {
+			throw;
+		}
 
 		List<Ship> ships = Game.GameShips(GameType);
 		if (RandomShipPlacement is false) {
@@ -127,13 +140,13 @@ internal class BattleshipGame
 			}
 		}
 		_myFleet = (await
-				_hubConnection
+				hubConnection
 				.InvokeAsync<List<Ship>>("PlaceShips", player, gameId, ships, RandomShipPlacement))
 			.ToDictionary(ship => ship.Type, ship => ship);
 
 		Task.Delay(500).Wait();
 		
-		_hubConnection.On<List<AttackResult>>("AttackResults", (attackResults) => {
+		hubConnection.On<List<AttackResult>>("AttackResults", (attackResults) => {
 			foreach (AttackResult attackResult in attackResults.Where(ar => ar.TargetedPlayerId == player.Id)) {
 				if (attackResult.ShipType is ShipType s) {
 					_myFleet[s].Attack(attackResult.AttackCoordinate);
@@ -152,7 +165,7 @@ internal class BattleshipGame
 
 			while (gameStatus is GameStatus.Attacking) {
 				if (TryGetCoordinateFromUser(_topRow + INPUT_ROW, Theme.Colour, out Coordinate coordinate)) {
-					List<AttackResult> attackResults = await _hubConnection
+					List<AttackResult> attackResults = await hubConnection
 						.InvokeAsync<List<AttackResult>>("Fire", player, gameId, coordinate);
 				} else {
 					gameStatus = GameStatus.Abandoned;
@@ -168,11 +181,13 @@ internal class BattleshipGame
 		Console.WriteLine();
 		Console.WriteLine($" Results");
 		AnsiConsole.MarkupLineInterpolated($"  [bold]Pos Score  Player Name    [/]");
-		List<LeaderboardEntry> leaderboard = await _hubConnection
+		List<LeaderboardEntry> leaderboard = await hubConnection
 			.InvokeAsync<List<LeaderboardEntry>>("Leaderboard", gameId);
 		foreach (LeaderboardEntry playerWithScore in leaderboard) {
 			AnsiConsole.MarkupLineInterpolated($"   [{(playerWithScore.Position == 1 ? $"{Theme.WinnerColour}" : $"{Theme.Colour}")}]{playerWithScore.Position}   {playerWithScore.Score,3}   {playerWithScore.Name,-20}[/]");
 		}
+
+		await hubConnection.DisposeAsync();
 	}
 
 	private void PlaceShips(Game game)
@@ -377,65 +392,6 @@ internal class BattleshipGame
 
 			Console.SetCursorPosition(currCol, currRow);
 		}
-	}
-
-	private async  Task PrepareNetwork(string uri)
-	{
-		_hubConnection = new HubConnectionBuilder()
-			.WithUrl($"{uri}/bsm")
-			.WithAutomaticReconnect()
-			.Build();
-
-		await _hubConnection.StartAsync();
-	}
-
-	private async Task<AuthPlayer> RegisterPlayer(string playerName)
-	{
-		AuthPlayer privatePlayer;
-		try {
-			privatePlayer = await _hubConnection.InvokeAsync<AuthPlayer>("RegisterPlayer", playerName);
-		}
-		catch (Exception ex) {
-			Debug.WriteLine($"Error in {nameof(RegisterPlayer)}: {ex.Message}");
-			throw;
-		}
-
-		Debug.WriteLine($"Player returned: {player}");
-		return privatePlayer;
-	}
-
-	private async Task<Player> FindOpponent(bool isComputer = true)
-	{
-		Player player;
-		try {
-			player = await _hubConnection.InvokeAsync<ComputerPlayer>("FindComputerOpponent");
-		}
-		catch (Exception ex) {
-			Debug.WriteLine($"Error in {nameof(FindOpponent)}: {ex.Message}");
-			throw;
-		}
-
-		Debug.WriteLine($"Opponent returned: {player}");
-		return player;
-	}
-
-	private async Task<GameId> PlayVsComputer(AuthPlayer player, string computerPlayerName = "Computer", GameType gameType = GameType.Classic)
-	{
-		GameId? gameId;
-		try {
-			gameId = await _hubConnection.InvokeAsync<GameId>("StartGameVsComputer", player, computerPlayerName, gameType);
-		}
-		catch (Exception ex) {
-			Debug.WriteLine($"Error in {nameof(PlayVsComputer)}: {ex.Message}");
-			throw;
-		}
-
-		if (gameId is null) {
-			throw new ApplicationException($"{nameof(PlayVsComputer)}: Couldn't start a game against the computer.");
-		}
-
-		Debug.WriteLine($"Game Id: {gameId}");
-		return (GameId)gameId;
 	}
 
 	private static int PrepareGameSpace()
