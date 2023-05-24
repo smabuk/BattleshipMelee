@@ -7,7 +7,7 @@ internal sealed class BattleshipCommand : Command<BattleshipCommand.Settings> {
 		BattleshipGame battleshipGame = new() {
 			GameType            = settings.GameType,
 			PlayerName          = settings.PlayerName,
-			RandomShipPlacement = settings.RandomShipPlacement,
+			RandomPlacement = settings.RandomShipPlacement,
 			NetworkPlay         = settings.NetworkPlay,
 			Uri                 = $"https://{settings.Host}:{settings.Port}",
 			Theme               = settings.Theme,

@@ -4,33 +4,34 @@ namespace BSMConsole;
 
 internal class BattleshipGame
 {
-	public string PlayerName { get; set; } = "Me";
-	public bool RandomShipPlacement { get; set; } = false;
-	public GameType GameType { get; set; } = GameType.Classic;
-	public bool NetworkPlay = false;
-	public ITheme Theme = new DefaultTheme();
-	public string Uri = "";
+	// Settings
+	public GameType GameType        { get; set; } = GameType.Classic;
+	public bool     NetworkPlay     { get; set; } = false;
+	public string   PlayerName      { get; set; } = "Me";
+	public bool     RandomPlacement { get; set; } = false;
+	public ITheme   Theme           { get; set; } = new DefaultTheme();
+	public string   Uri             { get; set; } = "";
 
 	// Game layout constants
-	private const int LEFT_GRID = 4;
-	private const int RIGHT_GRID = 34;
-	private const int BOARD_ROW = 2;
-	private const int GAME_HEIGHT = 22;
-	private const int GAME_WIDTH = 66;
-	private const int INPUT_COL = LEFT_GRID;
-	private const int INPUT_ROW = 18;
-	private const int STATUS_COL = LEFT_GRID;
-	private const int STATUS_ROW = 17;
 	private const int CLEAR_WIDTH = 56;
+	private const int GAME_HEIGHT = 22;
+	private const int GAME_WIDTH  = 66;
+	private const int BOARD_ROW   = 2;
+	private const int LEFT_GRID   = 4;
+	private const int RIGHT_GRID  = 34;
+	private const int INPUT_COL   = LEFT_GRID;
+	private const int INPUT_ROW   = 18;
+	private const int STATUS_COL  = LEFT_GRID;
+	private const int STATUS_ROW  = 17;
 
 
-	static object consoleDisplayLock = new();
+	static readonly object consoleDisplayLock = new();
 	private int _topRow = int.MinValue;
 	
 	private readonly List<AttackResult> _attackResults = new();
-	private Dictionary<ShipType, Ship> _myFleet = new();
+	private Dictionary<ShipType, Ship>  _myFleet       = new();
 
-	private AuthPlayer player = new("Me");
+	private AuthPlayer     player   = new("Me");
 	private ComputerPlayer opponent = new("Computer");
 
 	internal void Play()
@@ -46,13 +47,12 @@ internal class BattleshipGame
 		Game game = Game.StartNewGame(players, GameType);
 
 		_topRow = PrepareGameSpace();
-
 		DisplayGame();
 
 		gameStatus = GameStatus.PlacingShips;
 		DisplayStatus(gameStatus);
 
-		if (RandomShipPlacement) {
+		if (RandomPlacement) {
 			game.PlaceShips(player, doItForMe: true);
 			_myFleet = game.Fleet(player).ToDictionary(ship => ship.Type, ship => ship);
 		} else {
@@ -61,7 +61,6 @@ internal class BattleshipGame
 		}
 
 		if (game.AreFleetsReady) {
-
 			gameStatus = GameStatus.Attacking;
 			DisplayStatus(gameStatus);
 			DisplayBoards(player, opponent, _myFleet.Values, game.BoardSize);
@@ -81,7 +80,7 @@ internal class BattleshipGame
 		gameStatus = game.GameOver ? GameStatus.GameOver : GameStatus.Abandoned;
 		DisplayStatus(gameStatus);
 
-		DisplayFinalSummary(game);
+		DisplayFinalSummary(game.LeaderBoard());
 	}
 
 	internal async Task PlayNetworkGame()
@@ -97,11 +96,25 @@ internal class BattleshipGame
 
 		await hubConnection.StartAsync();
 
+		// ToDo: Can reintroduce this when I can serialize all types of Player
 
 		//_hubConnection.On<Player>("Opponents", (player) => {
 		//	Debug.WriteLine($"Opponent: {player}");
 		//	opponent = player is ComputerPlayer p ? p : throw new ApplicationException("No opponents found.");
 		//});
+
+		hubConnection.On<GameId>("StartGame", (gId) => { gameId = gId; });
+		hubConnection.On<GameStatus>("GameStatusChange", (gStat) => { gameStatus = gStat; DisplayStatus(gameStatus); });
+		hubConnection.On<List<AttackResult>>("AttackResults", (attackResults) => {
+			foreach (AttackResult attackResult in attackResults.Where(ar => ar.TargetedPlayerId == player.Id)) {
+				if (attackResult.ShipType is ShipType s) {
+					_myFleet[s].Attack(attackResult.AttackCoordinate);
+				}
+			}
+			_attackResults.AddRange(attackResults);
+			DisplayShotsOnGrid(opponent);
+			DisplayShotsOnGrid(player, RIGHT_GRID);
+		});
 
 		try {
 			player = await hubConnection.InvokeAsync<AuthPlayer>("RegisterPlayer", PlayerName);
@@ -111,15 +124,10 @@ internal class BattleshipGame
 		}
 
 		_topRow = PrepareGameSpace();
-
 		DisplayGame();
 
-		hubConnection.On<GameId>("StartGame", (gId) => { gameId = gId; });
-		hubConnection.On<GameStatus>("GameStatusChange", (gStat) => { gameStatus = gStat; DisplayStatus(gameStatus); });
-
-
 		try {
-			gameId = await hubConnection.InvokeAsync<GameId>("StartGameVsComputer", player, "Computer", game.GameType);
+			gameId   = await hubConnection.InvokeAsync<GameId>("StartGameVsComputer", player, "Computer", game.GameType);
 			opponent = await hubConnection.InvokeAsync<ComputerPlayer>("FindComputerOpponent");
 		}
 		catch (Exception) {
@@ -127,7 +135,7 @@ internal class BattleshipGame
 		}
 
 		List<Ship> ships = Game.GameShips(GameType);
-		if (RandomShipPlacement is false) {
+		if (RandomPlacement is false) {
 			DisplayEmptyGrid(player, game.BoardSize);
 			ships = PlaceShipsForNetworkPlay(ships);
 			if (ships is null) {
@@ -141,25 +149,13 @@ internal class BattleshipGame
 		}
 		_myFleet = (await
 				hubConnection
-				.InvokeAsync<List<Ship>>("PlaceShips", player, gameId, ships, RandomShipPlacement))
+				.InvokeAsync<List<Ship>>("PlaceShips", player, gameId, ships, RandomPlacement))
 			.ToDictionary(ship => ship.Type, ship => ship);
 
+		// ToDo: This is a hack - work out how to wait efficiently for the GameStatus to change to Attacking
 		Task.Delay(500).Wait();
-		
-		hubConnection.On<List<AttackResult>>("AttackResults", (attackResults) => {
-			foreach (AttackResult attackResult in attackResults.Where(ar => ar.TargetedPlayerId == player.Id)) {
-				if (attackResult.ShipType is ShipType s) {
-					_myFleet[s].Attack(attackResult.AttackCoordinate);
-				}
-			}
-			_attackResults.AddRange(attackResults);
-			DisplayShotsOnGrid(opponent);
-			DisplayShotsOnGrid(player, RIGHT_GRID);
-		});
 
 		if (gameStatus is GameStatus.Attacking) {
-
-			gameStatus = GameStatus.Attacking;
 			DisplayStatus(gameStatus);
 			DisplayBoards(player, opponent, _myFleet.Values, game.BoardSize);
 
@@ -176,18 +172,8 @@ internal class BattleshipGame
 
 		DisplayStatus(gameStatus);
 
-		Console.SetCursorPosition(0, _topRow + GAME_HEIGHT - 2);
-		Console.WriteLine();
-		Console.WriteLine();
-		Console.WriteLine($" Results");
-		AnsiConsole.MarkupLineInterpolated($"  [bold]Pos Score  Player Name    [/]");
-		List<LeaderboardEntry> leaderboard = await hubConnection
-			.InvokeAsync<List<LeaderboardEntry>>("Leaderboard", gameId);
-		foreach (LeaderboardEntry playerWithScore in leaderboard) {
-			AnsiConsole.MarkupLineInterpolated($"   [{(playerWithScore.Position == 1 ? $"{Theme.WinnerColour}" : $"{Theme.Colour}")}]{playerWithScore.Position}   {playerWithScore.Score,3}   {playerWithScore.Name,-20}[/]");
-		}
-
-		await hubConnection.DisposeAsync();
+		List<LeaderboardEntry> leaderboard = await hubConnection.InvokeAsync<List<LeaderboardEntry>>("Leaderboard", gameId);
+		DisplayFinalSummary(leaderboard);
 	}
 
 	private void PlaceShips(Game game)
@@ -228,7 +214,8 @@ internal class BattleshipGame
 				DisplayStatus(GameStatus.PlacingShips, $" [green]{ship.Type.ToFriendlyString()}[/] ({ship.NoOfSegments} segments) ");
 				(Orientation Orientation, Coordinate Coordinate)? result = GetShipPlacementFromUser(_topRow + INPUT_ROW, Theme.Colour);
 
-				if (!result.HasValue) {
+				// User probably pressed Esc
+				if (result.HasValue is false) {
 					return null!;
 				}
 
@@ -288,12 +275,10 @@ internal class BattleshipGame
 		AnsiConsole.Markup($"[{Theme.Colour}]     1 2 3 4 5 6 7 8 9 10 [/]");
 		Console.SetCursorPosition(offsetCol, offsetRow + 2);
 		AnsiConsole.Markup($"[{Theme.Colour}]   ┌─────────────────────┐[/]");
+		string empty = string.Join(" ", Enumerable.Repeat($"{Theme.Empty}", boardSize));
 		for (int row = 0; row < boardSize; row++) {
 			Console.SetCursorPosition(offsetCol, offsetRow + 3 + row);
-			AnsiConsole.Markup($"[{Theme.Colour}]{Convert.ToChar(row + 'A'),2} │ [/]");
-			string empty = string.Join(" ", Enumerable.Repeat($"{Theme.Empty}", boardSize));
-			AnsiConsole.Markup($"[{Theme.EmptyColour}]{empty}[/]");
-			AnsiConsole.Markup($"[{Theme.Colour}] │[/]");
+			AnsiConsole.Markup($"[{Theme.Colour}]{Convert.ToChar(row + 'A'),2} │ [/][{Theme.EmptyColour}]{empty}[/][{Theme.Colour}] │[/]");
 		}
 		Console.SetCursorPosition(offsetCol, offsetRow + 13);
 		AnsiConsole.Markup($"[{Theme.Colour}]   └─────────────────────┘[/]");
@@ -303,12 +288,12 @@ internal class BattleshipGame
 	{
 		string message = status switch
 		{
-			GameStatus.PlacingShips => "Place your ships  ",
-			GameStatus.AddingPlayers => "Adding players    ",
-			GameStatus.Attacking => "Attack those ships",
-			GameStatus.GameOver => "GAME OVER         ",
-			GameStatus.Abandoned => "Abandoned",
-			_ => "                  "
+			GameStatus.PlacingShips  => "Place your ships",
+			GameStatus.AddingPlayers => "Adding players",
+			GameStatus.Attacking     => "Attack those ships",
+			GameStatus.GameOver      => "GAME OVER",
+			GameStatus.Abandoned     => "Abandoned",
+			_                        => ""
 		};
 
 		lock (consoleDisplayLock) {
@@ -317,13 +302,13 @@ internal class BattleshipGame
 			Console.SetCursorPosition(STATUS_COL, _topRow + STATUS_ROW);
 			AnsiConsole.Markup($"[{Theme.Colour}]{(new string(' ', CLEAR_WIDTH))}[/]");
 			Console.SetCursorPosition(STATUS_COL, _topRow + STATUS_ROW);
-			AnsiConsole.Markup($"[{ITheme.GetColour("yellow", Theme.BackgroundColour)}]     {message}[/][{Theme.Colour}]{markupMessage}[/]");
+			AnsiConsole.Markup($"[{ITheme.GetColour("yellow", Theme.BackgroundColour)}]     {message,-17}[/][{Theme.Colour}]{markupMessage}[/]");
 			
 			Console.SetCursorPosition(currCol, currRow);
 		}
 	}
 
-	private void DisplayFinalSummary(Game game)
+	private void DisplayFinalSummary(IEnumerable<LeaderboardEntry> leaderboard)
 	{
 		lock (consoleDisplayLock) {
 			(int currCol, int currRow) = Console.GetCursorPosition();
@@ -331,9 +316,8 @@ internal class BattleshipGame
 			Console.SetCursorPosition(0, _topRow + GAME_HEIGHT - 2);
 			Console.WriteLine();
 			Console.WriteLine();
-			AnsiConsole.MarkupLine($"[{Theme.Colour}] Results[/]");
+			AnsiConsole.MarkupLine($"[{Theme.Colour}]         Results[/]");
 			AnsiConsole.MarkupLineInterpolated($"[{Theme.Colour}]  [bold]Pos Score  Player Name         [/][/]");
-			List<LeaderboardEntry> leaderboard = game.LeaderBoard().ToList();
 			foreach (LeaderboardEntry playerWithScore in leaderboard) {
 				AnsiConsole.MarkupLineInterpolated($"[{(playerWithScore.Position == 1 ? $"{Theme.WinnerColour}" : $"{Theme.Colour}")}]   {playerWithScore.Position}   {playerWithScore.Score,3}   {playerWithScore.Name,-20}[/]");
 			}
