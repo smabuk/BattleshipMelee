@@ -65,7 +65,7 @@ public sealed class ShipTests
 	public void SerializeDeserializeBattleship()
 	{
 		Ship ship = new(ShipType.Battleship, new(1,1), Orientation.Horizontal);
-		string expected = $$"""{"Type":{{(int)ship.Type}},"Position":null,"Orientation":{{(int)ship.Orientation}},"SerializedSegments":[],"NoOfSegments":{{ship.NoOfSegments}},"IsPositioned":false,"IsAfloat":false,"IsSunk":false}""";
+		//string expected = $$"""{"Type":{{(int)ship.Type}},"Position":null,"Orientation":{{(int)ship.Orientation}},"SerializedSegments":[],"NoOfSegments":{{ship.NoOfSegments}},"IsPositioned":false,"IsAfloat":false,"IsSunk":false}""";
 		string actualJson = JsonSerializer.Serialize(ship);
 		//Assert.Equal(expected, actualJson);
 

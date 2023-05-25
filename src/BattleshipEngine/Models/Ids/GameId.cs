@@ -19,10 +19,7 @@ public partial struct GameId : IParsable<GameId>
 		return false;
 	}
 
-	private string GetDebuggerDisplay()
-	{
-		return ToString();
-	}
+	private string GetDebuggerDisplay() => ToString();
 }
 
 

@@ -82,6 +82,6 @@ public class GameService
 		return leaderboard;
 	}
 
-	public bool IsGameOver(GameId gameId) => Games.ContainsKey(gameId) ? Games[gameId].GameOver : false;
+	public bool IsGameOver(GameId gameId) => Games.ContainsKey(gameId) && Games[gameId].GameOver;
 
 }

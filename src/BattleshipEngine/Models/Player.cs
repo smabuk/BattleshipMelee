@@ -4,15 +4,12 @@ public record Player(string Name)
 {
 	public PlayerId Id { get; set; } = PlayerId.Generate();
 
-	public static Player PublicPlayer(Player player)
+	public static Player PublicPlayer(Player player) => player switch
 	{
-		return player switch
-		{
-			AuthPlayer p => p with { PrivateId = default },
-			ComputerPlayer => player,
-			_ => player,
-		};
-	}
+		AuthPlayer p   => p with { PrivateId = default },
+		ComputerPlayer => player,
+		_              => player,
+	};
 }
 
 public record ComputerPlayer(string Name) : Player(Name);

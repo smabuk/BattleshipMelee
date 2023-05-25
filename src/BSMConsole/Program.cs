@@ -3,7 +3,6 @@
 CommandApp<BattleshipCommand> app = new ();
 
 app.Configure(config => {
-
 	config.AddCommand<BattleshipCommand>("battleship")
 		.WithExample(new[] { "battleship", })
 		.WithExample(new[] { "battleship", "--random" })

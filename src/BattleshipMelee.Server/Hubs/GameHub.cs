@@ -20,14 +20,10 @@ internal class GameHub : Hub
 	}
 
 	public AuthPlayer RegisterPlayer(string name)
-	{
-		return (AuthPlayer)_gameService.AddPlayer(new(Context.ConnectionId), name);
-	}
+		=> (AuthPlayer)_gameService.AddPlayer(new(Context.ConnectionId), name);
 
-	public void UnRegisterPlayer(AuthPlayer privatePlayer)
-	{
-		_gameService.RemovePlayer(new(Context.ConnectionId), privatePlayer.Name);
-	}
+	public bool UnRegisterPlayer(AuthPlayer privatePlayer)
+		=> _gameService.RemovePlayer(new(Context.ConnectionId), privatePlayer.Name);
 
 	public async Task<GameId?> StartGameVsComputer(AuthPlayer player, string computerPlayerName = "Computer", GameType gameType = GameType.Classic)
 	{
@@ -66,13 +62,12 @@ internal class GameHub : Hub
 	}
 
 	public ComputerPlayer FindComputerOpponent(AuthPlayer player, GameId gameId)
-	{
-		return _gameService.FindOpponents(player, gameId).Where(p => p is ComputerPlayer).Select(p => (ComputerPlayer)p).First();
-	}
+		=> _gameService.FindOpponents(player, gameId)
+		.Where(p => p is ComputerPlayer)
+		.Select(p => (ComputerPlayer)p)
+		.First();
 
 	public List<LeaderboardEntry> Leaderboard(GameId gameId)
-	{
-		return _gameService.Leaderboard(gameId);
-	}
+		=> _gameService.Leaderboard(gameId);
 
 }

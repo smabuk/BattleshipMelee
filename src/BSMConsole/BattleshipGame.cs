@@ -111,7 +111,7 @@ internal class BattleshipGame
 		//	opponent = player is ComputerPlayer p ? p : throw new ApplicationException("No opponents found.");
 		//});
 
-		hubConnection.On<GameId>("StartGame", (gId) => { gameId = gId; });
+		hubConnection.On<GameId>("StartGame", (gId) => gameId = gId);
 		hubConnection.On<GameStatus>("GameStatusChange", (gStat) => { gameStatus = gStat; DisplayStatus(gameStatus); });
 		hubConnection.On<List<AttackResult>>("AttackResults", (attackResults) => {
 			foreach (AttackResult attackResult in attackResults.Where(ar => ar.TargetedPlayerId == player.Id)) {
@@ -136,7 +136,7 @@ internal class BattleshipGame
 
 		try {
 			gameId   = await hubConnection.InvokeAsync<GameId>("StartGameVsComputer", player, "Computer", game.GameType);
-			opponent = await hubConnection.InvokeAsync<ComputerPlayer>("FindComputerOpponent");
+			opponent = await hubConnection.InvokeAsync<ComputerPlayer>("FindComputerOpponent", player, gameId);
 		}
 		catch (Exception) {
 			throw;
@@ -178,6 +178,8 @@ internal class BattleshipGame
 			}
 		}
 
+		//_ = await hubConnection.InvokeAsync<bool>("UnRegisterPlayer", player);
+
 		DisplayStatus(gameStatus);
 
 		List<LeaderboardEntry> leaderboard = await hubConnection.InvokeAsync<List<LeaderboardEntry>>("Leaderboard", gameId);
@@ -189,7 +191,7 @@ internal class BattleshipGame
 		List<Ship> fleet = myFleet.ToList();
 		List<Ship> newFleet = myFleet.ToList();
 
-		for (int i = 0; i < fleet.Count(); i++) {
+		for (int i = 0; i < fleet.Count; i++) {
 			Ship ship = fleet[i];
 			bool badPlacement = true;
 			do {
@@ -317,16 +319,14 @@ internal class BattleshipGame
 				bool sunk = shots.Any(s => s.ShipType == shot.ShipType && s.AttackResultType == AttackResultType.HitAndSunk);
 				if (shot.AttackResultType is AttackResultType.Miss or AttackResultType.Hit or AttackResultType.HitAndSunk) {
 					ShipType shipType = shot.ShipType ?? ShipType.AircraftCarrier;
-					string AttackResultType = shot.AttackResultType switch
+					string attackResultString = shot.AttackResultType switch
 					{
 						AttackResultType.Miss => $"[{Theme.MissColour}]{Theme.Miss}[/]",
 						AttackResultType.Hit => sunk ? $"[{Theme.SunkColour}]{Theme.GetShipShape(shipType, true).ToUpper()}[/]" : $"[{Theme.HitColour}]{Theme.GetShipShape(shipType, false)}[/]",
 						AttackResultType.HitAndSunk => $"[{Theme.SunkColour}]{Theme.GetShipShape(shipType, true).ToUpper()}[/]",
-						AttackResultType.AlreadyAttacked => throw new ArgumentOutOfRangeException(nameof(shot.AttackResultType)),
-						AttackResultType.InvalidPosition => throw new ArgumentOutOfRangeException(nameof(shot.AttackResultType)),
-						_ => throw new ArgumentOutOfRangeException(nameof(shot.AttackResultType)),
+						_ => throw new ApplicationException($"Not expecting the attack result: {nameof(shot.AttackResultType)}"),
 					};
-					AnsiConsole.Markup(AttackResultType);
+					AnsiConsole.Markup(attackResultString);
 				}
 			}
 
@@ -405,7 +405,7 @@ internal class BattleshipGame
 
 	private static (Orientation Orientation, Coordinate Coordinate)? GetShipPlacementFromUser(int inputRow, string colour)
 	{
-		Coordinate coordinate = new(0, 0);
+		Coordinate coordinate;
 		string currentCoordinateString = "";
 		Orientation orientation = Orientation.Horizontal;
 

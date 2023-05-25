@@ -7,6 +7,7 @@ public record Game(GameType GameType = GameType.Classic)
 	private readonly Dictionary<PlayerId, List<AttackResult>> _shots = new();
 
 	public GameId GameId { get; private set; }
+
 	public bool AreFleetsReady => _boards.Values.All(board => board.IsFleetReady);
 	public int BoardSize => GetBoardSize(GameType);
 	public bool GameOver => _boards.Values.Any(board => board.IsFleetSunk);
@@ -16,7 +17,8 @@ public record Game(GameType GameType = GameType.Classic)
 
 	public static Game StartNewGame(List<Player> players, GameType gameType = GameType.Classic)
 	{
-		Game game = new Game(gameType) {
+		Game game = new Game(gameType)
+		{
 			GameId = GameId.Generate(),
 		};
 		foreach (Player player in players) {
@@ -91,7 +93,7 @@ public record Game(GameType GameType = GameType.Classic)
 
 	public IEnumerable<AttackResult> OtherPlayersFire()
 	{
-		foreach (ComputerPlayer computerPlayer in _players.Values.Where(p => p is ComputerPlayer)) {
+		foreach (ComputerPlayer computerPlayer in _players.Values.Where(p => p is ComputerPlayer).Select(p => (ComputerPlayer)p)) {
 			Player playerToAttack = Opponent(computerPlayer);
 
 			HashSet<Coordinate> alreadyAttacked = _shots[computerPlayer.Id].Select(s => s.AttackCoordinate).ToHashSet();
@@ -165,7 +167,7 @@ public record Game(GameType GameType = GameType.Classic)
 				board.PlaceShip(ship);
 			}
 		} else {
-			List<Ship> fleet; 
+			List<Ship> fleet;
 			if (shipsToPlace is null) {
 				fleet = board.Fleet.ToList();
 			} else {
@@ -222,7 +224,7 @@ public record Game(GameType GameType = GameType.Classic)
 	{
 		List<Ship> fleet = gameType switch
 		{
-			GameType.Classic => new ()
+			GameType.Classic => new()
 			{
 				new (ShipType.Destroyer),
 				new (ShipType.Submarine),
@@ -230,7 +232,7 @@ public record Game(GameType GameType = GameType.Classic)
 				new (ShipType.Battleship),
 				new (ShipType.AircraftCarrier),
 			},
-			GameType.BigBangTheory => new ()
+			GameType.BigBangTheory => new()
 			{
 				new (ShipType.Destroyer),
 				new (ShipType.Submarine),
