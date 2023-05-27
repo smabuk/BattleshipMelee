@@ -2,7 +2,7 @@
 
 using Spectre.Console;
 
-namespace BSMConsole;
+namespace BSMConsole.Themes;
 internal interface ITheme
 {
 	public string BackgroundColour { get; set; }
@@ -10,15 +10,15 @@ internal interface ITheme
 
 	public string Colour => GetColour(ForegroundColour, BackgroundColour);
 
-	public string EmptyColour => "blue";
-	public string HitColour   => "red";
+	public string EmptyColour  => "blue";
+	public string HitColour    => "red";
 	public string MissColour   => "blue";
-	public string SunkColour => HitColour;
+	public string SunkColour   => HitColour;
 	public string WinnerColour => "gold1";
 
-	string Name  => "Default";
+	string Name => "Default";
 	string Empty => ".";
-	string Miss  => "O";
+	string Miss => "O";
 
 	public bool CanIDisplayProperly() => true;
 
@@ -48,7 +48,7 @@ internal interface ITheme
 
 	internal static bool CanIDisplayEmojiProperly()
 	{
-		// Simplistic hack to make sure it is not using 437 or similar
+		// Simplistic hack to make sure it is not using codepage 437 or similar
 		return Console.OutputEncoding.CodePage > 1000;
 	}
 

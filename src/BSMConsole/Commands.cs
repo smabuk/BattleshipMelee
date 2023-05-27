@@ -1,4 +1,6 @@
-﻿namespace BSMConsole;
+﻿using BSMConsole.Themes;
+
+namespace BSMConsole;
 
 [Description("The game of Battleship")]
 internal sealed class BattleshipCommand : Command<BattleshipCommand.Settings> {
